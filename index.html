@@ -1,15 +1,235 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Sharp Axe Method</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Todo List Manager</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto max-w-2xl px-4 py-8">
+        <h1 class="text-3xl font-bold text-center text-gray-800 mb-8">Todo List Manager</h1>
+        
+        <!-- Todo Input Section -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 class="text-xl font-semibold text-gray-700 mb-4">Add New Todo</h2>
+            <div class="flex gap-2">
+                <input type="text" id="todoInput" placeholder="Enter a new todo..." 
+                       class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                       onkeypress="if(event.key==='Enter') addTodo()">
+                <button onclick="addTodo()" class="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition">Add</button>
+            </div>
+        </div>
+        
+        <!-- Todo List Section -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 class="text-xl font-semibold text-gray-700 mb-4">Todo List</h2>
+            <div id="todoList" class="space-y-2">
+                <!-- Todos will be populated here -->
+            </div>
+            <div id="emptyMessage" class="text-center text-gray-500 py-4 hidden">
+                No todos yet. Add one above!
+            </div>
+        </div>
+        
+        <!-- Action Buttons -->
+        <div class="flex gap-4 mb-6">
+            <button onclick="downloadSession()" class="flex-1 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition">
+                Download Session to TXT
+            </button>
+            <label class="flex-1 px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition cursor-pointer text-center">
+                Upload Session
+                <input type="file" id="uploadInput" accept=".txt" onchange="uploadSession()" class="hidden">
+            </label>
+        </div>
+        
+        <!-- Review Section (Initially Hidden) -->
+        <div id="reviewSection" class="bg-white rounded-lg shadow-md p-6 hidden">
+            <h2 class="text-xl font-semibold text-gray-700 mb-4">Review Section</h2>
+            <div class="space-y-4">
+                <div>
+                    <h3 class="font-medium text-gray-600 mb-2">Completed Todos</h3>
+                    <ul id="completedList" class="list-disc list-inside text-gray-700"></ul>
+                </div>
+                <div>
+                    <h3 class="font-medium text-gray-600 mb-2">Pending Todos</h3>
+                    <ul id="pendingList" class="list-disc list-inside text-gray-700"></ul>
+                </div>
+                <div class="border-t pt-4">
+                    <p class="text-lg font-semibold text-gray-800">
+                        Progress: <span id="progressPercent">0</span>%
+                    </p>
+                    <div class="w-full bg-gray-200 rounded-full h-2.5 mt-2">
+                        <div id="progressBar" class="bg-blue-600 h-2.5 rounded-full" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Todo array
+        let todos = [];
+        
+        // Load todos from localStorage on page load
+        window.onload = function() {
+            const saved = localStorage.getItem('todos');
+            if (saved) {
+                todos = JSON.parse(saved);
+                renderTodos();
+            }
+        };
+        
+        // Save todos to localStorage
+        function saveTodos() {
+            localStorage.setItem('todos', JSON.stringify(todos));
+        }
+        
+        // Add a new todo
+        function addTodo() {
+            const input = document.getElementById('todoInput');
+            const text = input.value.trim();
+            
+            if (text) {
+                todos.push({
+                    id: Date.now(),
+                    text: text,
+                    completed: false
+                });
+                input.value = '';
+                saveTodos();
+                renderTodos();
+            }
+        }
+        
+        // Toggle todo completion
+        function toggleTodo(id) {
+            const todo = todos.find(t => t.id === id);
+            if (todo) {
+                todo.completed = !todo.completed;
+                saveTodos();
+                renderTodos();
+                updateReviewSection();
+            }
+        }
+        
+        // Delete a todo
+        function deleteTodo(id) {
+            todos = todos.filter(t => t.id !== id);
+            saveTodos();
+            renderTodos();
+            updateReviewSection();
+        }
+        
+        // Render todos
+        function renderTodos() {
+            const list = document.getElementById('todoList');
+            const emptyMessage = document.getElementById('emptyMessage');
+            
+            if (todos.length === 0) {
+                list.innerHTML = '';
+                emptyMessage.classList.remove('hidden');
+                return;
+            }
+            
+            emptyMessage.classList.add('hidden');
+            list.innerHTML = todos.map(todo => `
+                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div class="flex items-center gap-3">
+                        <input type="checkbox" ${todo.completed ? 'checked' : ''} 
+                               onchange="toggleTodo(${todo.id})" class="w-5 h-5">
+                        <span class="${todo.completed ? 'line-through text-gray-500' : 'text-gray-800'}">${todo.text}</span>
+                    </div>
+                    <button onclick="deleteTodo(${todo.id})" class="text-red-500 hover:text-red-700">
+                        Delete
+                    </button>
+                </div>
+            `).join('');
+        }
+        
+        // Download session to TXT
+        function downloadSession() {
+            let content = 'Todo List Session\n';
+            content += '==================\n\n';
+            content += 'Completed:\n';
+            content += todos.filter(t => t.completed).map(t => `- ${t.text}`).join('\n') || 'None';
+            content += '\n\nPending:\n';
+            content += todos.filter(t => !t.completed).map(t => `- ${t.text}`).join('\n') || 'None';
+            
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'todo-session.txt';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        
+        // Upload session from TXT
+        function uploadSession() {
+            const input = document.getElementById('uploadInput');
+            const file = input.files[0];
+            
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const content = e.target.result;
+                    const lines = content.split('\n');
+                    const newTodos = [];
+                    
+                    let section = '';
+                    for (const line of lines) {
+                        if (line.startsWith('Completed:')) {
+                            section = 'completed';
+                            continue;
+                        }
+                        if (line.startsWith('Pending:')) {
+                            section = 'pending';
+                            continue;
+                        }
+                        if (line.startsWith('- ') && !line.startsWith('- None')) {
+                            const text = line.substring(2);
+                            // Add with proper completed state based on section
+                            newTodos.push({
+                                id: Date.now() + Math.random(),
+                                text: text,
+                                completed: section === 'completed'
+                            });
+                        }
+                    }
+                    
+                    // Merge with existing todos - keep uncompleted existing, add all from file
+                    todos = [...todos.filter(t => !t.completed), ...newTodos];
+                    saveTodos();
+                    renderTodos();
+                    
+                    // Show review section
+                    document.getElementById('reviewSection').classList.remove('hidden');
+                    updateReviewSection();
+                    
+                    input.value = '';
+                };
+                reader.readAsText(file);
+            }
+        }
+        
+        // Update review section
+        function updateReviewSection() {
+            const completedList = document.getElementById('completedList');
+            const pendingList = document.getElementById('pendingList');
+            const progressPercent = document.getElementById('progressPercent');
+            const progressBar = document.getElementById('progressBar');
+            
+            const completed = todos.filter(t => t.completed);
+            const pending = todos.filter(t => !t.completed);
+            
+            completedList.innerHTML = completed.map(t => `<li>${t.text}</li>`).join('') || '<li>None</li>';
+            pendingList.innerHTML = pending.map(t => `<li>${t.text}</li>`).join('') || '<li>None</li>';
+            
+            const percent = todos.length > 0 ? Math.round((completed.length / todos.length) * 100) : 0;
+            progressPercent.textContent = percent;
+            progressBar.style.width = percent + '%';
+        }
+    </script>
+</body>
 </html>
