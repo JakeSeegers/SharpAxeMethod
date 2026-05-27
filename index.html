@@ -1,9 +1,10 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title> Vanessa's sharp Axe Method Tool</title>
+<title>Sharp Axe Method</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
@@ -62,6 +63,9 @@
     letter-spacing: -0.01em;
   }
   .brand svg { color: var(--accent); }
+  .topbar-right {
+    display: flex; align-items: center; gap: 14px;
+  }
   .pips { display: flex; gap: 6px; align-items: center; }
   .pip {
     width: 6px; height: 6px; border-radius: 3px;
@@ -70,6 +74,58 @@
   }
   .pip.done    { background: var(--accent-mid); }
   .pip.current { background: var(--accent); width: 20px; }
+
+  /* ─── MENU BUTTON + DROPDOWN ────────────────────────────────────── */
+  .menu-wrap { position: relative; }
+  .menu-btn {
+    width: 36px; height: 36px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: transparent;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    color: var(--ink-mid);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .menu-btn:hover { border-color: var(--ink-faint); color: var(--ink); background: var(--bg); }
+  .menu-btn.open { background: var(--bg); border-color: var(--ink-faint); color: var(--ink); }
+  .menu-dropdown {
+    position: absolute; top: calc(100% + 8px); right: 0;
+    min-width: 220px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(44, 38, 32, 0.12);
+    padding: 6px;
+    z-index: 100;
+    display: none;
+    animation: menuIn 0.15s ease;
+  }
+  .menu-dropdown.open { display: block; }
+  @keyframes menuIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: none; }
+  }
+  .menu-item {
+    display: flex; align-items: center; gap: 12px;
+    width: 100%; padding: 10px 14px;
+    background: transparent; border: none;
+    border-radius: 8px;
+    color: var(--ink);
+    font-family: var(--sans); font-size: 14px; font-weight: 500;
+    text-align: left; cursor: pointer;
+    transition: background 0.12s ease;
+  }
+  .menu-item:hover { background: var(--accent-bg); }
+  .menu-item svg { color: var(--ink-muted); flex-shrink: 0; }
+  .menu-item:hover svg { color: var(--accent); }
+  .menu-item-sub {
+    font-size: 11px; color: var(--ink-muted);
+    display: block; margin-top: 2px; font-weight: 400;
+  }
+  .menu-divider {
+    height: 1px; background: var(--line); margin: 4px 8px;
+  }
 
   /* ─── MAIN ──────────────────────────────────────────────────────── */
   main {
@@ -381,6 +437,25 @@
     text-transform: uppercase; letter-spacing: 0.05em; margin-top: 4px;
   }
 
+  /* ─── SAVE SESSION CARD (reflect phase) ─────────────────────────── */
+  .save-card {
+    margin-top: 20px; padding: 20px 22px;
+    background: var(--surface);
+    border: 1.5px solid var(--accent-mid);
+    border-radius: 12px;
+    display: flex; align-items: center; gap: 16px;
+  }
+  .save-card-body { flex: 1; }
+  .save-card-title {
+    font-family: var(--serif);
+    font-size: 18px; color: var(--ink); margin-bottom: 4px;
+    line-height: 1.2;
+  }
+  .save-card-sub {
+    font-size: 13px; color: var(--ink-mid); line-height: 1.4;
+  }
+  .save-card .btn { flex-shrink: 0; }
+
   /* ─── TIP CALLOUT ───────────────────────────────────────────────── */
   .tip {
     margin-top: 32px; padding: 14px 18px;
@@ -410,6 +485,24 @@
     font-size: 12px; letter-spacing: 0.05em; text-transform: uppercase;
   }
 
+  /* ─── TOAST ─────────────────────────────────────────────────────── */
+  .toast {
+    position: fixed; bottom: 24px; left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--ink); color: var(--bg);
+    padding: 12px 20px; border-radius: 10px;
+    font-size: 14px; font-weight: 500;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    z-index: 200;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .toast.show {
+    opacity: 1; transform: translateX(-50%) translateY(0);
+  }
+  .toast.error { background: #8a2c2c; }
+
   /* ─── PHASE TRANSITIONS ─────────────────────────────────────────── */
   .phase-content { animation: fadeIn 0.3s ease; }
   @keyframes fadeIn {
@@ -419,10 +512,12 @@
 
   @media (max-width: 600px) {
     .topbar { padding: 14px 20px; }
+    .topbar-right { gap: 10px; }
     main { padding: 28px 16px 60px; }
     .phase-title { font-size: 28px; }
     .matrix { grid-template-columns: 1fr; }
     .stats-banner { gap: 12px; }
+    .save-card { flex-direction: column; align-items: flex-start; }
   }
 </style>
 </head>
@@ -436,9 +531,57 @@
       <path d="M10 5c1-1 6-2 8 0s1 7 0 8-6 2-8 0"/>
       <path d="M7 7c-1 1-2 6 0 8"/>
     </svg>
-    Vanessa's sharp Axe Method
+    Sharp Axe Method
   </div>
-  <div class="pips" id="pips" aria-label="Progress"></div>
+  <div class="topbar-right">
+    <div class="pips" id="pips" aria-label="Progress"></div>
+    <div class="menu-wrap">
+      <button class="menu-btn" id="menuBtn" aria-label="Menu" aria-haspopup="true" aria-expanded="false">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
+          <circle cx="5" cy="12" r="1.7"/>
+          <circle cx="12" cy="12" r="1.7"/>
+          <circle cx="19" cy="12" r="1.7"/>
+        </svg>
+      </button>
+      <div class="menu-dropdown" id="menuDropdown" role="menu">
+        <button class="menu-item" id="miImport" role="menuitem">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17,8 12,3 7,8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          <span>
+            Import Todos
+            <span class="menu-item-sub">Load tasks from a .json file</span>
+          </span>
+        </button>
+        <button class="menu-item" id="miExport" role="menuitem">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7,10 12,15 17,10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          <span>
+            Export Todos
+            <span class="menu-item-sub">Save tasks as .json</span>
+          </span>
+        </button>
+        <div class="menu-divider"></div>
+        <button class="menu-item" id="miSaveAll" role="menuitem">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+            <polyline points="17,21 17,13 7,13 7,21"/>
+            <polyline points="7,3 7,8 15,8"/>
+          </svg>
+          <span>
+            Save Full Session
+            <span class="menu-item-sub">Download everything as .txt</span>
+          </span>
+        </button>
+      </div>
+    </div>
+    <input type="file" id="fileInput" accept=".json,application/json" style="display:none" />
+  </div>
 </header>
 
 <main id="main">
@@ -464,21 +607,14 @@
   <div id="quoteSlot"></div>
 </main>
 
+<div class="toast" id="toast"></div>
+
 <script>
 /* ============================================================
-   Vanessa's sharp Axe Method — single-file app
-   7 phases:
-     1. physical    (checklist)
-     2. mental      (checklist)
-     3. braindump   (input list)
-     4. eisenhower  (drag-drop matrix)
-     5. schedule    (rules + per-task time + notes)
-     6. doit        (execution checklist + progress)
-     7. reflect     (rating questions + notes + stats)
-   Persists to localStorage.
+   Sharp Axe Method — single-file app
    ============================================================ */
 
-const STORAGE_KEY = "Vaness'a sharp-axe-state-v1";
+const STORAGE_KEY = "sharp-axe-state-v1";
 
 /* ─── PHASE DEFINITIONS ─────────────────────────────────────── */
 const PHASES = [
@@ -570,9 +706,9 @@ const defaultState = () => ({
     physical: [false, false, false, false],
     mental:   [false, false, false],
   },
-  tasks: [],           // { id, text, quadrant, done, scheduledTime }
+  tasks: [],
   scheduleNotes: "",
-  reflectAnswers: {},  // { questionText: ratingLabel }
+  reflectAnswers: {},
   reflectNotes: "",
 });
 
@@ -596,7 +732,6 @@ function saveState() {
 
 /* ─── UTILS ─────────────────────────────────────────────────── */
 const $  = (sel, root = document) => root.querySelector(sel);
-const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 const uid = () => Date.now() + Math.floor(Math.random() * 1000);
 
 function el(tag, attrs = {}, children = []) {
@@ -625,7 +760,18 @@ const SVG = {
   plus:  `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`,
   trash: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,6 5,6 21,6"/><path d="M19,6l-1,14H6L5,6"/><path d="M10,11v6"/><path d="M14,11v6"/><path d="M9,6V4h6v2"/></svg>`,
   refresh: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23,4 23,10 17,10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>`,
+  save: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17,21 17,13 7,13 7,21"/><polyline points="7,3 7,8 15,8"/></svg>`,
 };
+
+/* ─── TOAST ─────────────────────────────────────────────────── */
+let _toastTimer = null;
+function toast(msg, kind = "success") {
+  const t = $("#toast");
+  t.textContent = msg;
+  t.className = "toast show" + (kind === "error" ? " error" : "");
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => t.classList.remove("show"), 2400);
+}
 
 /* ─── HEADER PIPS ───────────────────────────────────────────── */
 function renderPips() {
@@ -661,11 +807,7 @@ function renderChecklist(p) {
     const card = el("button", {
       class: `check-card ${checked ? "checked" : ""}`,
       type: "button",
-      onclick: () => {
-        items[i] = !items[i];
-        saveState();
-        render();
-      },
+      onclick: () => { items[i] = !items[i]; saveState(); render(); },
     }, [
       el("span", { class: "check-circle", html: checked ? SVG.check : "" }),
       el("span", { class: "check-text", text: label }),
@@ -718,8 +860,7 @@ function renderBrainDump(p) {
           "aria-label": "Remove",
           onclick: () => {
             state.tasks = state.tasks.filter(t => t.id !== task.id);
-            saveState();
-            render();
+            saveState(); render();
           },
           html: SVG.trash,
         }),
@@ -729,7 +870,6 @@ function renderBrainDump(p) {
     list.appendChild(el("div", { class: "check-counter", text: `${state.tasks.length} task${state.tasks.length !== 1 ? "s" : ""} captured` }));
     wrap.appendChild(list);
   }
-  // focus restoration
   setTimeout(() => $(`#${inputId}`)?.focus(), 0);
   return wrap;
 }
@@ -739,8 +879,7 @@ function addBrainDump() {
   const text = (input?.value || "").trim();
   if (!text) return;
   state.tasks.push({ id: uid(), text, quadrant: null, done: false, scheduledTime: "" });
-  saveState();
-  render();
+  saveState(); render();
 }
 
 /* ─── PHASE: EISENHOWER MATRIX ──────────────────────────────── */
@@ -768,7 +907,6 @@ function renderMatrix(p) {
         ondragend: () => { _dragId = null; },
         text: task.text,
       });
-      // click-to-assign fallback (mobile/no-drag)
       chip.addEventListener("click", () => {
         const choice = prompt(
           `Assign "${task.text}" to:\n1 = Do First (Urgent + Important)\n2 = Schedule (Not Urgent + Important)\n3 = Delegate (Urgent + Not Important)\n4 = Eliminate (Not Urgent + Not Important)`,
@@ -1005,6 +1143,20 @@ function renderReflect(p) {
     ]),
   ]));
 
+  // Save Session card — prominent button to download the full session
+  wrap.appendChild(el("div", { class: "save-card" }, [
+    el("div", { class: "save-card-body" }, [
+      el("div", { class: "save-card-title", text: "Save this session" }),
+      el("div", { class: "save-card-sub",
+        text: "Download a readable .txt with your tasks, schedule, notes, and reflection — so you have it after you reset." }),
+    ]),
+    el("button", {
+      class: "btn btn-primary",
+      onclick: () => downloadFullSession(),
+      html: `${SVG.save}<span>Save Session</span>`,
+    }),
+  ]));
+
   return wrap;
 }
 
@@ -1036,16 +1188,13 @@ function renderQuote() {
 function render() {
   renderPips();
 
-  // Content
   const content = $("#phaseContent");
   content.innerHTML = "";
   content.appendChild(renderPhaseContent());
 
-  // Tip
   const p = PHASES[state.phase];
   if (p.tip) content.appendChild(tipBlock(p.tip));
 
-  // Nav buttons
   const backBtn = $("#backBtn");
   const nextBtn = $("#nextBtn");
   const nextLabel = $("#nextLabel");
@@ -1057,13 +1206,11 @@ function render() {
     nextLabel.textContent = "New Session";
     nextBtn.classList.remove("btn-primary");
     nextBtn.classList.add("btn-dark");
-    // swap arrow → refresh icon
     nextBtn.querySelector("svg").outerHTML = SVG.refresh;
     nextBtn.onclick = () => {
-      if (confirm("Reset and start a new session?")) {
+      if (confirm("Reset and start a new session? Your current session will be cleared from this browser. (Use Save Session first if you want a copy.)")) {
         state = defaultState();
-        saveState();
-        render();
+        saveState(); render();
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
     };
@@ -1071,7 +1218,6 @@ function render() {
     nextLabel.textContent = state.phase === 0 ? "Begin" : "Continue";
     nextBtn.classList.add("btn-primary");
     nextBtn.classList.remove("btn-dark");
-    // ensure arrow icon present
     if (!nextBtn.querySelector("polyline[points='12,5 19,12 12,19']")) {
       const svg = nextBtn.querySelector("svg");
       if (svg) svg.outerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12,5 19,12 12,19"/></svg>`;
@@ -1088,14 +1234,243 @@ function render() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // Quote at end
   renderQuote();
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   IMPORT / EXPORT / SAVE
+   ═══════════════════════════════════════════════════════════════ */
+
+function downloadBlob(filename, content, mime) {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function timestamp() {
+  const d = new Date();
+  const pad = n => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}`;
+}
+
+/* ---- EXPORT TODOS (just the task list, JSON for round-trip) ---- */
+function exportTodos() {
+  if (state.tasks.length === 0) {
+    toast("No todos to export", "error");
+    return;
+  }
+  const payload = {
+    type: "sharp-axe-todos",
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    tasks: state.tasks.map(t => ({
+      text: t.text,
+      quadrant: t.quadrant,
+      done: !!t.done,
+      scheduledTime: t.scheduledTime || "",
+    })),
+  };
+  downloadBlob(
+    `sharp-axe-todos_${timestamp()}.json`,
+    JSON.stringify(payload, null, 2),
+    "application/json"
+  );
+  toast(`Exported ${state.tasks.length} todo${state.tasks.length !== 1 ? "s" : ""}`);
+}
+
+/* ---- IMPORT TODOS ---- */
+function importTodos() {
+  $("#fileInput").click();
+}
+
+async function handleFileImport(e) {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+    let incoming = [];
+    if (Array.isArray(data)) {
+      incoming = data;
+    } else if (data && Array.isArray(data.tasks)) {
+      incoming = data.tasks;
+    } else {
+      throw new Error("Unrecognized file format");
+    }
+    const cleaned = incoming
+      .filter(t => t && typeof t.text === "string" && t.text.trim())
+      .map(t => ({
+        id: uid(),
+        text: String(t.text).trim(),
+        quadrant: ["q1","q2","q3","q4"].includes(t.quadrant) ? t.quadrant : null,
+        done: !!t.done,
+        scheduledTime: typeof t.scheduledTime === "string" ? t.scheduledTime : "",
+      }));
+    if (cleaned.length === 0) throw new Error("No tasks found in file");
+
+    let mode = "append";
+    if (state.tasks.length > 0) {
+      const yes = confirm(
+        `Import ${cleaned.length} todo${cleaned.length !== 1 ? "s" : ""}?\n\n` +
+        `OK  = Append to your existing ${state.tasks.length} todo${state.tasks.length !== 1 ? "s" : ""}\n` +
+        `Cancel = Replace all existing todos`
+      );
+      mode = yes ? "append" : "replace";
+    }
+    if (mode === "replace") {
+      state.tasks = cleaned;
+    } else {
+      state.tasks = state.tasks.concat(cleaned);
+    }
+    saveState(); render();
+    toast(`Imported ${cleaned.length} todo${cleaned.length !== 1 ? "s" : ""}`);
+  } catch (err) {
+    toast("Couldn't import: " + (err.message || "invalid file"), "error");
+  } finally {
+    e.target.value = "";
+  }
+}
+
+/* ---- SAVE FULL SESSION (readable .txt with everything) ---- */
+function downloadFullSession() {
+  const lines = [];
+  const now = new Date();
+  lines.push("╔══════════════════════════════════════════════╗");
+  lines.push("║         SHARP AXE METHOD — SESSION           ║");
+  lines.push("╚══════════════════════════════════════════════╝");
+  lines.push("");
+  lines.push("Saved: " + now.toLocaleString());
+  lines.push("");
+
+  // Checklists
+  ["physical", "mental"].forEach(id => {
+    const phase = PHASES.find(p => p.id === id);
+    const items = state.checklistItems[id] || [];
+    lines.push("─── " + phase.title.toUpperCase() + " ───");
+    phase.items.forEach((label, i) => {
+      lines.push((items[i] ? "[x] " : "[ ] ") + label);
+    });
+    lines.push("");
+  });
+
+  // Tasks by quadrant
+  lines.push("─── ALL TODOS ───");
+  if (state.tasks.length === 0) {
+    lines.push("(none captured)");
+  } else {
+    state.tasks.forEach((t, i) => {
+      lines.push(`${i + 1}. ${t.done ? "[x]" : "[ ]"} ${t.text}`);
+    });
+  }
+  lines.push("");
+
+  lines.push("─── EISENHOWER MATRIX ───");
+  QUADRANTS.forEach(q => {
+    const tasks = state.tasks.filter(t => t.quadrant === q.id);
+    lines.push(`\n  ${q.label.toUpperCase()} — ${q.sub}`);
+    if (tasks.length === 0) {
+      lines.push("    (none)");
+    } else {
+      tasks.forEach(t => lines.push(`    • ${t.done ? "[x] " : "[ ] "}${t.text}`));
+    }
+  });
+  const unassigned = state.tasks.filter(t => !t.quadrant);
+  if (unassigned.length) {
+    lines.push("\n  UNASSIGNED");
+    unassigned.forEach(t => lines.push(`    • ${t.done ? "[x] " : "[ ] "}${t.text}`));
+  }
+  lines.push("");
+
+  // Schedule
+  lines.push("─── SCHEDULE ───");
+  const scheduled = prioritizedTasks();
+  if (scheduled.length === 0) {
+    lines.push("(no scheduled tasks)");
+  } else {
+    scheduled.forEach((t, i) => {
+      const q = QUADRANTS.find(q => q.id === t.quadrant);
+      const time = t.scheduledTime ? ` @ ${t.scheduledTime}` : "";
+      const tag  = q ? ` [${q.label}]` : "";
+      lines.push(`${i + 1}. ${t.done ? "[x]" : "[ ]"} ${t.text}${tag}${time}`);
+    });
+  }
+  lines.push("");
+
+  lines.push("─── COMMUNICATE ───");
+  lines.push((state.scheduleNotes || "").trim() || "(none)");
+  lines.push("");
+
+  // Execution stats
+  const total = state.tasks.length;
+  const done = state.tasks.filter(t => t.done).length;
+  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+  lines.push("─── EXECUTION ───");
+  lines.push(`Completed: ${done} / ${total} (${pct}%)`);
+  lines.push("");
+
+  // Reflection
+  lines.push("─── REFLECTION ───");
+  const refPhase = PHASES.find(p => p.id === "reflect");
+  refPhase.questions.forEach(q => {
+    const a = state.reflectAnswers[q] || "(not answered)";
+    lines.push(`Q: ${q}`);
+    lines.push(`A: ${a}`);
+    lines.push("");
+  });
+
+  lines.push("─── DIG DEEPER — YOUR NOTES ───");
+  lines.push((state.reflectNotes || "").trim() || "(none)");
+  lines.push("");
+
+  lines.push("═════════════════════════════════════════════════");
+  lines.push(`"The mind should not be kept continuously at the same`);
+  lines.push(`pitch of concentration, but given amusing diversions.`);
+  lines.push(`Our minds must relax. They will rise better, and`);
+  lines.push(`keener after a rest."  — Seneca the Younger`);
+
+  downloadBlob(`sharp-axe-session_${timestamp()}.txt`, lines.join("\n"), "text/plain;charset=utf-8");
+  toast("Session saved");
+}
+
+/* ─── MENU WIRING ───────────────────────────────────────────── */
+const menuBtn = $("#menuBtn");
+const menuDropdown = $("#menuDropdown");
+function closeMenu() {
+  menuDropdown.classList.remove("open");
+  menuBtn.classList.remove("open");
+  menuBtn.setAttribute("aria-expanded", "false");
+}
+function openMenu() {
+  menuDropdown.classList.add("open");
+  menuBtn.classList.add("open");
+  menuBtn.setAttribute("aria-expanded", "true");
+}
+menuBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  menuDropdown.classList.contains("open") ? closeMenu() : openMenu();
+});
+document.addEventListener("click", (e) => {
+  if (!menuDropdown.contains(e.target) && e.target !== menuBtn) closeMenu();
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") closeMenu();
+});
+
+$("#miImport").addEventListener("click", () => { closeMenu(); importTodos(); });
+$("#miExport").addEventListener("click", () => { closeMenu(); exportTodos(); });
+$("#miSaveAll").addEventListener("click", () => { closeMenu(); downloadFullSession(); });
+$("#fileInput").addEventListener("change", handleFileImport);
 
 /* ─── KICKOFF ───────────────────────────────────────────────── */
 render();
 window.addEventListener("beforeunload", saveState);
 </script>
 
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a02863dcdaf5b595',t:'MTc3OTkyMDI1MA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a02873b30e081b04',t:'MTc3OTkyMDg5OQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
