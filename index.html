@@ -7,73 +7,112 @@
 <title>Sharp Axe Method</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   /* ─── DESIGN TOKENS ─────────────────────────────────────────────── */
   :root {
-    --accent-hue: 90;
-    --accent:       oklch(52% 0.13 var(--accent-hue));
-    --accent-mid:   oklch(72% 0.10 var(--accent-hue));
-    --accent-light: oklch(92% 0.06 var(--accent-hue));
-    --accent-dark:  oklch(38% 0.12 var(--accent-hue));
-    --accent-bg:    oklch(97% 0.02 var(--accent-hue));
-
-    --ink:         #2c2620;
-    --ink-mid:     #6b5e52;
-    --ink-muted:   #9c8f84;
-    --ink-faint:   #c8bdb4;
-    --line:        #e8e0d8;
-    --line-strong: #ddd4c8;
+    --bg:          #f1f4f6;
     --surface:     #ffffff;
-    --bg:          #faf8f5;
+    --surface-2:   #f7f9fa;
+    --ink:         #111820;
+    --ink-mid:     #46515d;
+    --ink-muted:   #7a8592;
+    --ink-faint:   #b3bcc6;
+    --line:        #e1e6ea;
+    --line-strong: #cbd3da;
 
-    --q1: #d44;
-    --q2: #2a9d8f;
-    --q3: #e9c46a;
-    --q4: #adb5bd;
+    --accent:        #e2550f;
+    --accent-strong: #b8420a;
+    --accent-soft:   #fff1e9;
+    --accent-ink:    #8f3309;
+    --steel:         #1d3550;
+    --steel-soft:    #e7eef5;
+    --good:          #2b8a3e;
+    --good-soft:     #e8f6ec;
 
-    --serif: 'DM Serif Display', Georgia, serif;
-    --sans:  'DM Sans', ui-sans-serif, system-ui, sans-serif;
+    --q1:    #e03131;
+    --q2:    #1c7ed6;
+    --quick: #7048e8;
+    --q4:    #868e96;
+
+    --shadow: 0 1px 2px rgba(17, 24, 32, 0.05), 0 4px 14px rgba(17, 24, 32, 0.05);
+    --head: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
+    --sans: 'Figtree', ui-sans-serif, system-ui, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:          #0e1217;
+      --surface:     #161c23;
+      --surface-2:   #1c232b;
+      --ink:         #e9eef3;
+      --ink-mid:     #b4bfca;
+      --ink-muted:   #828e9b;
+      --ink-faint:   #4f5a66;
+      --line:        #252d36;
+      --line-strong: #343e49;
+
+      --accent:        #ff7a3d;
+      --accent-strong: #ff9a66;
+      --accent-soft:   #2b1a11;
+      --accent-ink:    #ffb48f;
+      --steel:         #c7d5e3;
+      --steel-soft:    #1b2734;
+      --good:          #51cf66;
+      --good-soft:     #142a1b;
+
+      --q1:    #ff6b6b;
+      --q2:    #4dabf7;
+      --quick: #9775fa;
+      --q4:    #868e96;
+
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 14px rgba(0, 0, 0, 0.25);
+    }
   }
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { height: 100%; }
   body {
     font-family: var(--sans);
-    background: var(--accent-bg);
+    background: var(--bg);
     color: var(--ink);
     min-height: 100vh;
     -webkit-font-smoothing: antialiased;
     line-height: 1.5;
   }
-  ::selection { background: var(--accent-light); color: var(--accent-dark); }
+  ::selection { background: var(--accent-soft); color: var(--accent-ink); }
+  button { font-family: var(--sans); }
 
   /* ─── HEADER ────────────────────────────────────────────────────── */
   .topbar {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 16px 32px;
-    border-bottom: 1px solid var(--line);
+    padding: 14px 28px;
     background: var(--surface);
+    border-bottom: 1px solid var(--line);
+    position: sticky; top: 0; z-index: 50;
   }
   .brand {
     display: flex; align-items: center; gap: 10px;
-    color: var(--accent-dark);
-    font-family: var(--serif);
-    font-size: 18px;
+    color: var(--ink);
+    font-family: var(--head);
+    font-weight: 800;
+    font-size: 17px;
     letter-spacing: -0.01em;
   }
-  .brand svg { color: var(--accent); }
-  .topbar-right {
-    display: flex; align-items: center; gap: 14px;
+  .brand-mark {
+    width: 30px; height: 30px; border-radius: 8px;
+    background: var(--accent); color: #fff;
+    display: inline-flex; align-items: center; justify-content: center;
   }
-  .pips { display: flex; gap: 6px; align-items: center; }
+  .topbar-right { display: flex; align-items: center; gap: 14px; }
+  .pips { display: flex; gap: 5px; align-items: center; }
   .pip {
-    width: 6px; height: 6px; border-radius: 3px;
-    background: var(--line-strong);
-    transition: all 0.3s ease;
+    width: 8px; height: 8px; border-radius: 4px; padding: 0;
+    background: var(--line-strong); border: none; cursor: pointer;
+    transition: all 0.25s ease;
   }
-  .pip.done    { background: var(--accent-mid); }
-  .pip.current { background: var(--accent); width: 20px; }
+  .pip:hover { background: var(--ink-faint); }
+  .pip.done    { background: var(--steel); opacity: 0.55; }
+  .pip.current { background: var(--accent); width: 24px; opacity: 1; }
 
   /* ─── MENU BUTTON + DROPDOWN ────────────────────────────────────── */
   .menu-wrap { position: relative; }
@@ -87,15 +126,14 @@
     cursor: pointer;
     transition: all 0.15s ease;
   }
-  .menu-btn:hover { border-color: var(--ink-faint); color: var(--ink); background: var(--bg); }
-  .menu-btn.open { background: var(--bg); border-color: var(--ink-faint); color: var(--ink); }
+  .menu-btn:hover, .menu-btn.open { border-color: var(--line-strong); color: var(--ink); background: var(--surface-2); }
   .menu-dropdown {
     position: absolute; top: calc(100% + 8px); right: 0;
-    min-width: 220px;
+    min-width: 230px;
     background: var(--surface);
     border: 1px solid var(--line);
-    border-radius: 12px;
-    box-shadow: 0 12px 32px rgba(44, 38, 32, 0.12);
+    border-radius: 10px;
+    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.16);
     padding: 6px;
     z-index: 100;
     display: none;
@@ -108,111 +146,153 @@
   }
   .menu-item {
     display: flex; align-items: center; gap: 12px;
-    width: 100%; padding: 10px 14px;
+    width: 100%; padding: 10px 12px;
     background: transparent; border: none;
-    border-radius: 8px;
+    border-radius: 7px;
     color: var(--ink);
-    font-family: var(--sans); font-size: 14px; font-weight: 500;
+    font-size: 14px; font-weight: 600;
     text-align: left; cursor: pointer;
-    transition: background 0.12s ease;
   }
-  .menu-item:hover { background: var(--accent-bg); }
+  .menu-item:hover { background: var(--surface-2); }
   .menu-item svg { color: var(--ink-muted); flex-shrink: 0; }
   .menu-item:hover svg { color: var(--accent); }
   .menu-item-sub {
-    font-size: 11px; color: var(--ink-muted);
-    display: block; margin-top: 2px; font-weight: 400;
+    font-size: 12px; color: var(--ink-muted);
+    display: block; margin-top: 1px; font-weight: 400;
   }
-  .menu-divider {
-    height: 1px; background: var(--line); margin: 4px 8px;
-  }
+  .menu-divider { height: 1px; background: var(--line); margin: 4px 8px; }
 
   /* ─── MAIN ──────────────────────────────────────────────────────── */
   main {
-    max-width: 720px; margin: 0 auto;
+    max-width: 740px; margin: 0 auto;
     padding: 40px 24px 80px;
   }
-
+  .phase-header { margin-bottom: 30px; }
   .phase-num {
-    font-size: 12px; font-weight: 600; letter-spacing: 0.12em;
-    text-transform: uppercase; color: var(--accent); margin-bottom: 8px;
+    display: inline-block;
+    font-size: 12px; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--accent);
+    margin-bottom: 10px;
   }
   .phase-title {
-    font-family: var(--serif);
-    font-size: 36px; font-weight: 400; line-height: 1.15;
-    color: var(--ink); letter-spacing: -0.02em; margin-bottom: 8px;
+    font-family: var(--head);
+    font-size: 38px; font-weight: 800; line-height: 1.08;
+    color: var(--ink); letter-spacing: -0.025em; margin-bottom: 8px;
   }
-  .phase-sub {
-    font-size: 16px; color: var(--ink-mid); font-weight: 300;
+  .phase-sub { font-size: 16px; color: var(--ink-mid); }
+
+  .section-label {
+    font-size: 12px; font-weight: 700; color: var(--ink-muted);
+    letter-spacing: 0.07em; text-transform: uppercase;
+    margin-bottom: 10px; display: block;
   }
-  .phase-header { margin-bottom: 36px; }
+  .section { margin-top: 28px; }
+  .hint { font-size: 13px; color: var(--ink-muted); margin-bottom: 12px; }
 
   /* ─── BUTTONS ───────────────────────────────────────────────────── */
   .btn {
     display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-    padding: 10px 20px;
+    padding: 10px 18px;
     border-radius: 8px;
     border: 1px solid var(--line-strong);
-    background: transparent;
-    color: var(--ink-mid);
-    font-family: var(--sans); font-size: 14px; font-weight: 500;
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 14px; font-weight: 600;
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
     user-select: none;
+    text-decoration: none;
+    white-space: nowrap;
   }
-  .btn:hover { border-color: var(--ink-faint); color: var(--ink); }
+  .btn:hover { border-color: var(--ink-faint); background: var(--surface-2); }
   .btn:active { transform: translateY(1px); }
-  .btn-primary {
-    background: var(--accent); color: #fff; border-color: transparent;
+  .btn-primary { background: var(--accent); color: #fff; border-color: transparent; }
+  .btn-primary:hover { background: var(--accent-strong); color: #fff; }
+  .btn-dark { background: var(--steel); color: var(--bg); border-color: transparent; }
+  .btn-dark:hover { background: var(--ink); color: var(--bg); }
+  .btn-good { background: var(--good); color: #fff; border-color: transparent; }
+  .btn-good:hover { filter: brightness(1.08); background: var(--good); }
+  .btn-sm { padding: 6px 12px; font-size: 13px; border-radius: 7px; }
+  .btn-lg { padding: 14px 24px; font-size: 16px; }
+  .btn-icon { padding: 12px; min-width: 46px; }
+  .btn-ghost { background: transparent; border-color: transparent; color: var(--ink-mid); }
+  .btn-ghost:hover { background: var(--surface-2); color: var(--ink); border-color: transparent; }
+
+  .icon-btn {
+    background: none; border: none; cursor: pointer;
+    color: var(--ink-faint);
+    padding: 5px; border-radius: 6px;
+    display: inline-flex; align-items: center; justify-content: center;
+    transition: color 0.15s ease, background 0.15s ease;
   }
-  .btn-primary:hover { background: var(--accent-dark); color: #fff; }
-  .btn-dark {
-    background: var(--accent-dark); color: #fff; border-color: transparent;
-  }
-  .btn-dark:hover { background: var(--accent); color: #fff; }
-  .btn-icon { padding: 12px; min-width: 44px; }
+  .icon-btn:hover { color: var(--ink); background: var(--surface-2); }
+  .icon-btn.danger:hover { color: var(--q1); }
+  .icon-btn.on { color: var(--quick); }
 
   /* ─── INPUTS ────────────────────────────────────────────────────── */
-  input[type="text"], input[type="time"], textarea {
+  input[type="text"], textarea {
     width: 100%;
     background: var(--surface);
     border: 1.5px solid var(--line);
     color: var(--ink);
-    border-radius: 10px;
-    padding: 12px 16px;
+    border-radius: 9px;
+    padding: 12px 15px;
     outline: none;
     font-family: var(--sans); font-size: 15px;
-    transition: border-color 0.15s ease;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
   }
-  input[type="text"]:focus, input[type="time"]:focus, textarea:focus {
+  input[type="text"]:focus, textarea:focus {
     border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
   }
   input::placeholder, textarea::placeholder { color: var(--ink-faint); }
-  textarea { resize: vertical; min-height: 100px; line-height: 1.6; }
-  input[type="time"] {
-    padding: 6px 10px; font-size: 13px; background: var(--bg);
-    width: auto; cursor: pointer;
+  textarea { resize: vertical; min-height: 120px; line-height: 1.6; }
+  input[type="time"], input[type="date"], select {
+    padding: 7px 10px; font-size: 13px; font-family: var(--sans);
+    background: var(--surface-2); color: var(--ink);
+    border: 1.5px solid var(--line); border-radius: 7px;
+    outline: none; cursor: pointer;
+  }
+  input[type="time"]:focus, input[type="date"]:focus, select:focus { border-color: var(--accent); }
+  @media (prefers-color-scheme: dark) {
+    input[type="time"], input[type="date"] { color-scheme: dark; }
   }
 
+  .input-row { display: flex; gap: 10px; margin-bottom: 18px; }
+  .input-row input { flex: 1; }
+
+  /* ─── SEGMENTED CONTROL ─────────────────────────────────────────── */
+  .seg {
+    display: inline-flex; gap: 4px; padding: 4px;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 10px; margin-bottom: 12px;
+  }
+  .seg button {
+    border: none; background: transparent; cursor: pointer;
+    padding: 7px 14px; border-radius: 7px;
+    font-size: 13px; font-weight: 600; color: var(--ink-mid);
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .seg button.active { background: var(--steel); color: var(--bg); }
+  .seg button.active.quick { background: var(--quick); color: #fff; }
+
   /* ─── CHECKLIST CARDS ───────────────────────────────────────────── */
-  .checklist { display: flex; flex-direction: column; gap: 14px; }
+  .checklist { display: flex; flex-direction: column; gap: 12px; }
   .check-card {
     display: flex; align-items: center; gap: 16px;
-    padding: 18px 22px;
+    padding: 17px 20px;
     background: var(--surface);
     border: 1.5px solid var(--line);
-    border-radius: 12px;
+    border-radius: 11px;
     cursor: pointer; text-align: left;
-    transition: all 0.2s ease;
-    font-family: var(--sans); width: 100%;
+    transition: border-color 0.2s ease, background 0.2s ease;
+    width: 100%;
+    color: var(--ink);
   }
-  .check-card:hover { border-color: var(--ink-faint); }
-  .check-card.checked {
-    background: var(--accent-light);
-    border-color: var(--accent-mid);
-  }
+  .check-card:hover { border-color: var(--line-strong); }
+  .check-card.checked { background: var(--good-soft); border-color: color-mix(in srgb, var(--good) 40%, transparent); }
   .check-circle {
-    width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0;
+    width: 24px; height: 24px; border-radius: 7px; flex-shrink: 0;
     border: 2px solid var(--ink-faint);
     background: transparent;
     display: inline-flex; align-items: center; justify-content: center;
@@ -220,256 +300,337 @@
     transition: all 0.2s ease;
   }
   .check-circle.large { width: 26px; height: 26px; }
-  .check-card.checked .check-circle {
-    background: var(--accent); border-color: var(--accent); color: #fff;
-  }
-  .check-text {
-    font-size: 15px; color: var(--ink); line-height: 1.4;
-    font-weight: 400;
-  }
-  .check-card.checked .check-text {
-    color: var(--accent-dark); text-decoration: line-through;
-  }
-  .check-counter {
-    font-size: 13px; color: var(--ink-muted); text-align: right; margin-top: 4px;
-  }
+  .check-card.checked .check-circle { background: var(--good); border-color: var(--good); color: #fff; }
+  .check-text { font-size: 15px; color: var(--ink); line-height: 1.4; }
+  .check-card.checked .check-text { color: var(--ink-muted); text-decoration: line-through; }
+  .check-counter { font-size: 13px; color: var(--ink-muted); text-align: right; margin-top: 4px; }
 
-  /* ─── BRAIN DUMP ────────────────────────────────────────────────── */
-  .input-row { display: flex; gap: 10px; margin-bottom: 20px; }
-  .input-row input { flex: 1; }
-  .task-list { display: flex; flex-direction: column; gap: 8px; }
-  .task-row {
-    display: flex; align-items: center; gap: 12px;
-    padding: 13px 16px;
+  .extra-panel {
+    margin-top: -4px;
+    padding: 20px;
     background: var(--surface);
     border: 1.5px solid var(--line);
-    border-radius: 10px;
-  }
-  .task-index {
-    color: var(--ink-faint); font-size: 12px; min-width: 20px; text-align: right;
-  }
-  .task-text {
-    flex: 1; font-size: 15px; color: var(--ink); line-height: 1.4;
-    cursor: text;
-    background: transparent; border: none; outline: none;
-    font-family: var(--sans);
-  }
-  .task-remove {
-    background: none; border: none; cursor: pointer;
-    color: var(--ink-faint);
-    padding: 4px; border-radius: 6px;
-    display: inline-flex; align-items: center;
-    transition: color 0.15s ease;
-  }
-  .task-remove:hover { color: #d44; }
-  .empty {
-    text-align: center; color: var(--ink-faint);
-    font-size: 15px; padding: 40px 0;
+    border-radius: 11px;
   }
 
-  /* ─── EISENHOWER MATRIX ─────────────────────────────────────────── */
-  .unassigned-wrap { margin-bottom: 24px; }
-  .section-label {
-    font-size: 13px; font-weight: 600; color: var(--ink-muted);
-    letter-spacing: 0.06em; text-transform: uppercase;
-    margin-bottom: 10px; display: block;
+  /* ─── BOX BREATHING ─────────────────────────────────────────────── */
+  .breath { display: flex; align-items: center; gap: 28px; }
+  .breath svg { flex-shrink: 0; width: 180px; height: 180px; }
+  .breath-track { fill: none; stroke: var(--line-strong); stroke-width: 3; }
+  .breath-fill { fill: color-mix(in srgb, var(--q2) 18%, transparent); stroke: none; }
+  .breath-dot { fill: var(--accent); }
+  .breath-count { font-family: var(--head); font-weight: 800; font-size: 40px; fill: var(--ink); }
+  .breath-side { stroke: var(--accent); stroke-width: 4; stroke-linecap: round; fill: none; opacity: 0; transition: opacity 0.2s; }
+  .breath-side.on { opacity: 1; }
+  .breath-body { flex: 1; }
+  .breath-step {
+    font-family: var(--head); font-weight: 800; font-size: 26px;
+    color: var(--ink); line-height: 1.1; margin-bottom: 4px;
   }
-  .unassigned-list {
-    display: flex; flex-wrap: wrap; gap: 8px;
+  .breath-help { font-size: 14px; color: var(--ink-mid); margin-bottom: 14px; }
+  .breath-cycles { font-size: 13px; color: var(--ink-muted); margin-top: 10px; }
+
+  /* ─── TASK LISTS ────────────────────────────────────────────────── */
+  .task-list { display: flex; flex-direction: column; gap: 8px; }
+  .task-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px 10px 14px;
+    background: var(--surface);
+    border: 1.5px solid var(--line);
+    border-radius: 9px;
   }
-  .unassigned-chip {
-    padding: 6px 12px;
+  .task-row.quick { border-left: 4px solid var(--quick); }
+  .task-index { color: var(--ink-faint); font-size: 12px; min-width: 18px; text-align: right; }
+  .task-row input.task-text {
+    flex: 1; font-size: 15px; color: var(--ink); line-height: 1.4;
+    background: transparent; border: none; outline: none; box-shadow: none;
+    padding: 2px 0; border-radius: 0;
+    font-family: var(--sans); min-width: 0;
+  }
+  .empty {
+    text-align: center; color: var(--ink-muted);
+    font-size: 15px; padding: 32px 0;
+    border: 1.5px dashed var(--line-strong); border-radius: 11px;
+  }
+  .empty.small { padding: 16px; font-size: 14px; }
+
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 11px; font-weight: 700; letter-spacing: 0.02em;
+    padding: 2px 8px; border-radius: 99px;
+    background: color-mix(in srgb, var(--c, var(--ink-muted)) 14%, transparent);
+    color: var(--c, var(--ink-muted));
+    white-space: nowrap;
+  }
+
+  /* ─── SORT MATRIX ───────────────────────────────────────────────── */
+  .unassigned-wrap { margin-bottom: 22px; }
+  .chip-list { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    padding: 7px 12px;
     background: var(--surface);
     border: 1.5px dashed var(--ink-faint);
     border-radius: 8px;
     font-size: 14px; color: var(--ink);
-    cursor: grab;
-    user-select: none;
-    transition: border-color 0.15s, transform 0.05s;
+    cursor: grab; user-select: none;
+    transition: border-color 0.15s, transform 0.05s, box-shadow 0.15s;
   }
-  .unassigned-chip:hover { border-color: var(--accent); }
-  .unassigned-chip:active { cursor: grabbing; transform: scale(0.98); }
-  .matrix {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
-  }
+  .chip:hover { border-color: var(--accent); }
+  .chip:active { cursor: grabbing; transform: scale(0.98); }
+  .chip.picked, .q-task.picked { border: 1.5px solid var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .matrix { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .quadrant {
+    --c: var(--ink-muted);
     min-height: 150px;
     background: var(--surface);
-    border: 2px solid transparent;
-    border-radius: 12px;
+    border: 1.5px solid var(--line);
+    border-top: 4px solid var(--c);
+    border-radius: 11px;
     padding: 14px;
-    transition: background 0.15s;
+    transition: background 0.15s, box-shadow 0.15s;
   }
-  .quadrant.drag-over { background: var(--accent-bg); }
-  .q1 { border-color: color-mix(in srgb, var(--q1) 13%, transparent); border-top: 3px solid var(--q1); }
-  .q2 { border-color: color-mix(in srgb, var(--q2) 13%, transparent); border-top: 3px solid var(--q2); }
-  .q3 { border-color: color-mix(in srgb, var(--q3) 25%, transparent); border-top: 3px solid var(--q3); }
-  .q4 { border-color: color-mix(in srgb, var(--q4) 25%, transparent); border-top: 3px solid var(--q4); }
-  .q-label { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
-  .q1 .q-label { color: var(--q1); }
-  .q2 .q-label { color: var(--q2); }
-  .q3 .q-label { color: #b8941f; }
-  .q4 .q-label { color: #6b7480; }
-  .q-sub { font-size: 11px; color: var(--ink-muted); margin-bottom: 10px; }
+  .quadrant.drag-over, .quadrant.target { background: color-mix(in srgb, var(--c) 7%, var(--surface)); }
+  .quadrant.target { cursor: pointer; box-shadow: 0 0 0 2px color-mix(in srgb, var(--c) 40%, transparent); }
+  .quadrant.q1 { --c: var(--q1); }
+  .quadrant.q2 { --c: var(--q2); }
+  .quadrant.quick { --c: var(--quick); }
+  .quadrant.q4 { --c: var(--q4); }
+  .q-label { font-family: var(--head); font-size: 16px; font-weight: 800; color: var(--c); }
+  .q-sub { font-size: 12px; color: var(--ink-muted); margin-bottom: 10px; }
   .q-tasks { display: flex; flex-direction: column; gap: 6px; }
   .q-task {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 5px 8px; border-radius: 6px; font-size: 13px;
-    color: var(--ink);
-    cursor: grab;
+    display: flex; align-items: center; justify-content: space-between; gap: 6px;
+    padding: 6px 8px; border-radius: 7px; font-size: 13px;
+    color: var(--ink); cursor: grab;
+    border: 1.5px solid transparent;
+    background: color-mix(in srgb, var(--c) 9%, var(--surface));
   }
   .q-task:active { cursor: grabbing; }
-  .q1 .q-task { background: color-mix(in srgb, var(--q1) 7%, white); }
-  .q2 .q-task { background: color-mix(in srgb, var(--q2) 7%, white); }
-  .q3 .q-task { background: color-mix(in srgb, var(--q3) 12%, white); }
-  .q4 .q-task { background: color-mix(in srgb, var(--q4) 12%, white); }
   .q-task-text { flex: 1; line-height: 1.3; }
-  .q-task-remove {
-    background: none; border: none; cursor: pointer;
-    color: var(--ink-faint); font-size: 16px; padding: 0 2px; line-height: 1;
-  }
-  .q-task-remove:hover { color: #d44; }
   .q-empty { font-size: 12px; color: var(--ink-faint); font-style: italic; }
 
   .key-question {
     margin-top: 20px; padding: 16px 20px;
-    background: var(--accent-light);
-    border: 1px solid var(--accent-mid);
-    border-radius: 12px;
+    background: var(--steel-soft);
+    border-radius: 11px;
+    border-left: 4px solid var(--steel);
   }
   .key-question-label {
-    font-size: 13px; font-weight: 600; color: var(--accent-dark); margin-bottom: 6px;
+    font-size: 12px; font-weight: 700; color: var(--steel);
+    text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 4px;
   }
-  .key-question-text {
-    font-size: 14px; color: var(--ink); line-height: 1.5;
-  }
+  .key-question-text { font-size: 15px; color: var(--ink); line-height: 1.5; }
 
   /* ─── SCHEDULE ──────────────────────────────────────────────────── */
-  .rule {
-    display: flex; gap: 12px; padding: 10px 14px;
-    background: var(--surface); border: 1px solid var(--line);
-    border-radius: 8px;
-    font-size: 13px; color: #4a3f38; line-height: 1.5;
-    margin-bottom: 8px;
+  .rules {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
   }
-  .rule-arrow { color: var(--accent-mid); font-weight: 700; flex-shrink: 0; }
-
+  .rule {
+    display: flex; gap: 10px; align-items: flex-start;
+    padding: 11px 13px;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 9px;
+    font-size: 13.5px; color: var(--ink-mid); line-height: 1.45;
+  }
+  .rule strong { color: var(--ink); font-weight: 700; }
+  .rule-num {
+    flex-shrink: 0; width: 20px; height: 20px; border-radius: 6px;
+    background: var(--accent-soft); color: var(--accent-ink);
+    font-size: 11px; font-weight: 800;
+    display: inline-flex; align-items: center; justify-content: center;
+    margin-top: 1px;
+  }
   .schedule-task {
-    display: flex; align-items: center; gap: 12px;
-    padding: 13px 16px;
+    padding: 13px 15px;
     background: var(--surface);
     border: 1.5px solid var(--line);
     border-radius: 10px;
     margin-bottom: 8px;
   }
-  .schedule-task-num {
-    color: var(--ink-faint); font-size: 12px;
-    min-width: 20px; text-align: right; flex-shrink: 0;
-  }
-  .schedule-task-body { flex: 1; }
-  .schedule-task-text { font-size: 14px; color: var(--ink); margin-bottom: 2px; }
-  .schedule-task-quad { font-size: 11px; font-weight: 600; }
+  .schedule-task-top { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .schedule-task-num { color: var(--ink-faint); font-size: 12px; min-width: 16px; text-align: right; }
+  .schedule-task-text { flex: 1; font-size: 15px; color: var(--ink); }
+  .schedule-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding-left: 26px; }
+  .gcal-btn { margin-left: auto; }
 
-  /* ─── EXECUTION ─────────────────────────────────────────────────── */
-  .progress-wrap { margin-bottom: 28px; }
+  /* ─── COMMUNICATE ───────────────────────────────────────────────── */
+  .ref-list { display: flex; flex-direction: column; gap: 6px; }
+  .ref-row {
+    display: flex; justify-content: space-between; gap: 12px;
+    font-size: 14px; padding: 8px 12px;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 8px;
+  }
+  .ref-when { color: var(--ink-muted); white-space: nowrap; font-size: 13px; }
+  .row-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+
+  /* ─── PROGRESS ──────────────────────────────────────────────────── */
+  .progress-wrap { margin-bottom: 24px; }
   .progress-meta {
-    display: flex; justify-content: space-between;
-    font-size: 13px; color: var(--ink-muted); margin-bottom: 8px;
+    display: flex; justify-content: space-between; gap: 12px;
+    font-size: 14px; color: var(--ink-mid); margin-bottom: 8px;
   }
-  .progress-meta strong { color: var(--accent); font-weight: 600; }
-  .progress-track {
-    height: 8px; background: var(--line); border-radius: 99px; overflow: hidden;
-  }
+  .progress-meta strong { color: var(--ink); font-weight: 700; white-space: nowrap; }
+  .progress-track { height: 10px; background: var(--line); border-radius: 99px; overflow: hidden; }
   .progress-fill {
     height: 100%; border-radius: 99px;
-    background: var(--accent);
-    transition: width 0.4s ease;
-    width: 0%;
+    background: linear-gradient(90deg, var(--accent), var(--good));
+    transition: width 0.5s ease;
   }
-  .progress-done {
-    margin-top: 10px; text-align: center;
-    font-size: 14px; color: var(--accent-dark); font-weight: 500;
+
+  /* ─── TRIAGE ────────────────────────────────────────────────────── */
+  .focus-card {
+    padding: 24px;
+    background: var(--surface);
+    border: 2px solid var(--accent);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
   }
-  .exec-task-meta {
-    display: flex; gap: 8px; margin-top: 3px; align-items: center;
+  .focus-label {
+    font-size: 12px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 6px;
+    display: flex; align-items: center; gap: 8px;
   }
-  .exec-task-quad { font-size: 11px; font-weight: 600; }
-  .exec-task-time { font-size: 11px; color: var(--ink-muted); }
+  .focus-label::before {
+    content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--accent);
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes pulse { 50% { opacity: 0.3; } }
+  .focus-text {
+    font-family: var(--head); font-size: 26px; font-weight: 800; line-height: 1.2;
+    letter-spacing: -0.015em; color: var(--ink); margin-bottom: 8px;
+    word-break: break-word;
+  }
+  .focus-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+  .focus-grid { display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; }
+  .focus-steps { flex: 1; min-width: 220px; }
+  .focus-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 20px; }
+
+  .steps { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+  .step {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px; border-radius: 8px;
+    background: var(--surface-2); font-size: 14px;
+  }
+  .step.next { background: var(--accent-soft); font-weight: 600; }
+  .step.done span.step-text { text-decoration: line-through; color: var(--ink-muted); }
+  .step .check-circle { width: 20px; height: 20px; border-radius: 6px; cursor: pointer; }
+  .step.done .check-circle { background: var(--good); border-color: var(--good); color: #fff; }
+  .step-text { flex: 1; }
+  .step-input { font-size: 14px !important; padding: 9px 12px !important; }
+
+  .timer { width: 150px; text-align: center; }
+  .timer svg { width: 120px; height: 120px; display: block; margin: 0 auto 6px; }
+  .timer-track { fill: none; stroke: var(--line); stroke-width: 8; }
+  .timer-ring {
+    fill: none; stroke: var(--accent); stroke-width: 8; stroke-linecap: round;
+    transform: rotate(-90deg); transform-origin: 60px 60px;
+    transition: stroke-dashoffset 0.25s linear;
+  }
+  .timer-text { font-family: var(--head); font-weight: 800; font-size: 24px; fill: var(--ink); }
+  .timer-presets { display: flex; gap: 4px; justify-content: center; margin-bottom: 6px; }
+  .timer-presets button {
+    border: 1px solid var(--line); background: var(--surface-2); color: var(--ink-mid);
+    font-size: 12px; font-weight: 600; padding: 3px 8px; border-radius: 6px; cursor: pointer;
+  }
+  .timer-presets button.active { background: var(--steel); color: var(--bg); border-color: var(--steel); }
+  .timer-controls { display: flex; gap: 4px; justify-content: center; }
+
+  .stuck-row {
+    display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+    margin-top: 14px; font-size: 13px; color: var(--ink-muted);
+  }
+
+  .up-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 10px 9px 12px;
+    background: var(--surface);
+    border: 1.5px solid var(--line);
+    border-radius: 9px;
+  }
+  .up-row .check-circle { cursor: pointer; width: 22px; height: 22px; border-radius: 6px; }
+  .up-row .check-circle:hover { border-color: var(--good); }
+  .up-row.done .check-circle { background: var(--good); border-color: var(--good); color: #fff; }
+  .up-row.done .up-text { text-decoration: line-through; color: var(--ink-muted); }
+  .up-num { font-size: 12px; color: var(--ink-faint); min-width: 16px; text-align: right; }
+  .up-text { flex: 1; font-size: 14.5px; min-width: 0; word-break: break-word; }
+  .up-tools { display: flex; gap: 2px; }
+
+  .all-done {
+    text-align: center; padding: 36px 20px;
+    background: var(--good-soft); border-radius: 14px;
+  }
+  .all-done-title { font-family: var(--head); font-size: 28px; font-weight: 800; color: var(--good); }
+  .all-done-sub { color: var(--ink-mid); margin-top: 4px; }
+
+  .note-line {
+    margin-top: 18px; font-size: 13px; color: var(--ink-muted); text-align: center;
+  }
+
+  /* ─── CONFETTI ──────────────────────────────────────────────────── */
+  .confetti {
+    position: fixed; width: 8px; height: 8px; border-radius: 2px;
+    pointer-events: none; z-index: 300;
+    animation: confetti 0.9s cubic-bezier(.2,.7,.4,1) forwards;
+  }
+  @keyframes confetti {
+    to { transform: translate(var(--dx), var(--dy)) rotate(var(--r)); opacity: 0; }
+  }
 
   /* ─── REFLECT ───────────────────────────────────────────────────── */
   .question-card {
-    padding: 20px 22px;
+    padding: 18px 20px;
     background: var(--surface);
     border: 1.5px solid var(--line);
-    border-radius: 12px;
-    margin-bottom: 16px;
+    border-radius: 11px;
+    margin-bottom: 12px;
   }
-  .question-text {
-    font-size: 15px; color: var(--ink); margin-bottom: 14px; line-height: 1.5;
-  }
+  .question-text { font-size: 15px; color: var(--ink); margin-bottom: 12px; line-height: 1.5; font-weight: 600; }
   .rating-row { display: flex; gap: 8px; }
   .rating-btn {
     flex: 1; padding: 8px 10px;
-    background: var(--bg); color: var(--ink-mid);
+    background: var(--surface-2); color: var(--ink-mid);
     border: 1.5px solid var(--line);
     border-radius: 8px; cursor: pointer;
-    font-size: 12px; font-weight: 500; font-family: var(--sans);
+    font-size: 13px; font-weight: 600;
     transition: all 0.15s ease;
   }
-  .rating-btn:hover { border-color: var(--ink-faint); }
-  .rating-btn.active {
-    background: var(--accent); color: #fff; border-color: var(--accent);
-  }
+  .rating-btn:hover { border-color: var(--line-strong); }
+  .rating-btn.active { background: var(--steel); color: var(--bg); border-color: var(--steel); }
   .stats-banner {
-    margin-top: 20px; padding: 16px 20px;
-    background: var(--accent-light);
-    border-radius: 12px;
-    display: flex; gap: 24px; justify-content: center;
+    margin-top: 20px; padding: 18px 20px;
+    background: var(--surface); border: 1.5px solid var(--line);
+    border-radius: 11px;
+    display: flex; gap: 24px; justify-content: space-around;
   }
   .stat { text-align: center; }
-  .stat-value {
-    font-family: var(--serif);
-    font-size: 26px; font-weight: 400; color: var(--accent-dark);
-    line-height: 1;
-  }
-  .stat-label {
-    font-size: 11px; color: var(--ink-muted);
-    text-transform: uppercase; letter-spacing: 0.05em; margin-top: 4px;
-  }
+  .stat-value { font-family: var(--head); font-size: 30px; font-weight: 800; color: var(--ink); line-height: 1; }
+  .stat-label { font-size: 11px; color: var(--ink-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 6px; }
 
-  /* ─── SAVE SESSION CARD (reflect phase) ─────────────────────────── */
   .save-card {
     margin-top: 20px; padding: 20px 22px;
-    background: var(--surface);
-    border: 1.5px solid var(--accent-mid);
-    border-radius: 12px;
+    background: var(--steel-soft);
+    border-radius: 11px;
     display: flex; align-items: center; gap: 16px;
   }
   .save-card-body { flex: 1; }
-  .save-card-title {
-    font-family: var(--serif);
-    font-size: 18px; color: var(--ink); margin-bottom: 4px;
-    line-height: 1.2;
-  }
-  .save-card-sub {
-    font-size: 13px; color: var(--ink-mid); line-height: 1.4;
-  }
+  .save-card-title { font-family: var(--head); font-size: 18px; font-weight: 800; color: var(--ink); margin-bottom: 2px; }
+  .save-card-sub { font-size: 13px; color: var(--ink-mid); line-height: 1.4; }
   .save-card .btn { flex-shrink: 0; }
 
   /* ─── TIP CALLOUT ───────────────────────────────────────────────── */
   .tip {
-    margin-top: 32px; padding: 14px 18px;
-    background: var(--accent-light);
+    margin-top: 28px; padding: 14px 18px;
+    background: var(--accent-soft);
     border-radius: 10px;
-    border-left: 3px solid var(--accent-mid);
-    font-size: 14px; color: var(--accent-dark);
-    line-height: 1.6; font-style: italic;
+    border-left: 4px solid var(--accent);
+    font-size: 14px; color: var(--accent-ink);
+    line-height: 1.6;
   }
 
   /* ─── NAV ───────────────────────────────────────────────────────── */
   .nav {
     display: flex; align-items: center; justify-content: space-between;
-    margin-top: 48px; padding-top: 24px;
+    margin-top: 44px; padding-top: 22px;
     border-top: 1px solid var(--line);
   }
   .nav-back-hidden { visibility: hidden; }
@@ -481,8 +642,8 @@
     font-style: italic; line-height: 1.7;
   }
   .quote-attr {
-    margin-top: 6px; font-style: normal; font-weight: 500;
-    font-size: 12px; letter-spacing: 0.05em; text-transform: uppercase;
+    margin-top: 6px; font-style: normal; font-weight: 700;
+    font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase;
   }
 
   /* ─── TOAST ─────────────────────────────────────────────────────── */
@@ -491,33 +652,40 @@
     transform: translateX(-50%) translateY(20px);
     background: var(--ink); color: var(--bg);
     padding: 12px 20px; border-radius: 10px;
-    font-size: 14px; font-weight: 500;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+    font-size: 14px; font-weight: 600;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.2);
     opacity: 0; pointer-events: none;
     transition: opacity 0.2s ease, transform 0.2s ease;
-    z-index: 200;
-    display: flex; align-items: center; gap: 8px;
+    z-index: 200; max-width: calc(100% - 32px); text-align: center;
   }
-  .toast.show {
-    opacity: 1; transform: translateX(-50%) translateY(0);
-  }
-  .toast.error { background: #8a2c2c; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast.error { background: #a32020; color: #fff; }
 
   /* ─── PHASE TRANSITIONS ─────────────────────────────────────────── */
-  .phase-content { animation: fadeIn 0.3s ease; }
+  .phase-content.enter { animation: fadeIn 0.3s ease; }
   @keyframes fadeIn {
     from { opacity: 0; transform: translateY(6px); }
     to   { opacity: 1; transform: none; }
   }
+  @media (prefers-reduced-motion: reduce) {
+    .phase-content.enter, .focus-label::before { animation: none; }
+  }
 
   @media (max-width: 600px) {
-    .topbar { padding: 14px 20px; }
+    .topbar { padding: 12px 16px; }
+    .brand-name { display: none; }
     .topbar-right { gap: 10px; }
     main { padding: 28px 16px 60px; }
-    .phase-title { font-size: 28px; }
-    .matrix { grid-template-columns: 1fr; }
+    .phase-title { font-size: 30px; }
+    .matrix, .rules { grid-template-columns: 1fr; }
     .stats-banner { gap: 12px; }
     .save-card { flex-direction: column; align-items: flex-start; }
+    .breath { flex-direction: column; text-align: center; gap: 16px; }
+    .schedule-controls { padding-left: 0; }
+    .gcal-btn { margin-left: 0; }
+    .focus-card { padding: 18px; }
+    .focus-text { font-size: 22px; }
+    .timer { width: 100%; }
   }
 </style>
 </head>
@@ -525,13 +693,15 @@
 
 <header class="topbar">
   <div class="brand">
-    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <path d="M14 12L5 21"/>
-      <path d="M5.5 4.5l4 4"/>
-      <path d="M10 5c1-1 6-2 8 0s1 7 0 8-6 2-8 0"/>
-      <path d="M7 7c-1 1-2 6 0 8"/>
-    </svg>
-    Sharp Axe Method
+    <span class="brand-mark">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M14 12L5 21"/>
+        <path d="M5.5 4.5l4 4"/>
+        <path d="M10 5c1-1 6-2 8 0s1 7 0 8-6 2-8 0"/>
+        <path d="M7 7c-1 1-2 6 0 8"/>
+      </svg>
+    </span>
+    <span class="brand-name">Sharp Axe Method</span>
   </div>
   <div class="topbar-right">
     <div class="pips" id="pips" aria-label="Progress"></div>
@@ -611,16 +781,17 @@
 
 <script>
 /* ============================================================
-   Sharp Axe Method — single-file app
+   Sharp Axe Method - single-file app
    ============================================================ */
 
-const STORAGE_KEY = "sharp-axe-state-v1";
+const STORAGE_KEY = "sharp-axe-state-v2";
+const OLD_STORAGE_KEY = "sharp-axe-state-v1";
 
 /* ─── PHASE DEFINITIONS ─────────────────────────────────────── */
 const PHASES = [
   {
     id: "physical",
-    title: "Prepare Physical Environment",
+    title: "Prepare Your Space",
     subtitle: "Clear the space around you",
     type: "checklist",
     items: [
@@ -632,50 +803,57 @@ const PHASES = [
   },
   {
     id: "mental",
-    title: "Prepare Mental Environment",
+    title: "Prepare Your Mind",
     subtitle: "Settle your mind before you begin",
     type: "checklist",
     items: [
-      "Breathing exercises (box breathing)",
+      { text: "Box breathing: follow the square for a few rounds", extra: "breathing" },
       "Name five things you can hear, smell, touch, and taste",
-      "Brain dump — stream of consciousness",
+      { text: "Brain dump: write whatever is on your mind", extra: "braindump" },
     ],
   },
   {
-    id: "braindump",
-    title: "Brain Dump",
-    subtitle: "Stream of consciousness — list all possible to-dos",
+    id: "list",
+    title: "List Your To-Dos",
+    subtitle: "Write down every task. Do not sort yet. You will sort them in the next step.",
     type: "input-list",
   },
   {
-    id: "eisenhower",
-    title: "Categorize Your To-Dos",
-    subtitle: "Eisenhower Matrix — minimize context switching",
+    id: "sort",
+    title: "Sort Your To-Dos",
+    subtitle: "Put each task in a box, so you switch between kinds of work less",
     type: "matrix",
-    tip: "What one thing if done would make everything else on this list easier?",
   },
   {
     id: "schedule",
     title: "Schedule",
-    subtitle: "Build a specific, realistic plan",
+    subtitle: "Give each task a real time, then put it on your calendar",
     type: "schedule",
     rules: [
-      "If it takes less than two minutes, don't schedule it — do it immediately.",
-      "Find the dates that can't be filled.",
-      "Double the estimated time for a task.",
-      "Schedule the most important things to happen first, regardless of how much you want to do it.",
-      "Get ultra specific when writing what needs to be done.",
-      "If it seems impossible, ask yourself what it would look like if it were easy and plan for that.",
-      "Plan for the average version of yourself, not you at your best.",
-      "When possible, focus on doing one task until its completion.",
-      "A good plan is a flexible plan — be prepared to change everything.",
+      ["Under 3 minutes?", "Do it now. Do not schedule it."],
+      ["Block off first", "the times you cannot use."],
+      ["Double", "every time estimate."],
+      ["Most important first,", "even if you do not want to do it."],
+      ["Be very specific.", "Plan for an average day, not your best day."],
+      ["One task at a time.", "Expect the plan to change."],
     ],
   },
   {
-    id: "doit",
-    title: "Just Do It",
-    subtitle: "Follow your schedule until you are less overwhelmed.",
-    type: "execution",
+    id: "communicate",
+    title: "Communicate",
+    subtitle: "Tell people what to expect from you",
+    type: "communicate",
+    tips: [
+      ["Add a day.", "Give a date one day later than you think."],
+      ["Be honest.", "If people rely on you, tell them you are overwhelmed."],
+      ["Keep it short.", "What, when, and what you need from them."],
+    ],
+  },
+  {
+    id: "triage",
+    title: "Triage",
+    subtitle: "One task at a time, in order of priority. Start small and keep moving.",
+    type: "triage",
   },
   {
     id: "reflect",
@@ -688,16 +866,18 @@ const PHASES = [
       "Did you have ridiculous expectations?",
       "Were you avoiding something or procrastinating?",
     ],
-    tip: "Being pushed to your limits sucks, but it can be an amazing teacher. Plus it's better than the alternative — not being pushed at all.",
+    tip: "Being pushed to your limits sucks, but it can be an amazing teacher. Plus it's better than the alternative: not being pushed at all.",
   },
 ];
 
 const QUADRANTS = [
-  { id: "q1", label: "Do First",  sub: "Urgent + Important" },
-  { id: "q2", label: "Schedule",  sub: "Not Urgent + Important" },
-  { id: "q3", label: "Delegate",  sub: "Urgent + Not Important" },
-  { id: "q4", label: "Eliminate", sub: "Not Urgent + Not Important" },
+  { id: "q1",    label: "Do First",       sub: "Urgent + Important",           color: "var(--q1)" },
+  { id: "q2",    label: "Schedule",       sub: "Important, not urgent",        color: "var(--q2)" },
+  { id: "quick", label: "Under 3 Min",    sub: "Small things. Just do them.",  color: "var(--quick)" },
+  { id: "q4",    label: "Eliminate",      sub: "Not urgent + Not important",   color: "var(--q4)" },
 ];
+const QUADRANT_IDS = QUADRANTS.map(q => q.id);
+const qInfo = (id) => QUADRANTS.find(q => q.id === id);
 
 /* ─── STATE ─────────────────────────────────────────────────── */
 const defaultState = () => ({
@@ -706,24 +886,51 @@ const defaultState = () => ({
     physical: [false, false, false, false],
     mental:   [false, false, false],
   },
+  mentalDump: "",
   tasks: [],
   scheduleNotes: "",
+  triageOrder: [],
   reflectAnswers: {},
   reflectNotes: "",
 });
 
 let state = loadState();
 
+function normalizeTask(t) {
+  return {
+    id: t.id || uid(),
+    text: String(t.text || "").trim(),
+    quadrant: QUADRANT_IDS.includes(t.quadrant) ? t.quadrant : null,
+    done: !!t.done,
+    scheduledTime: typeof t.scheduledTime === "string" ? t.scheduledTime : "",
+    date: typeof t.date === "string" ? t.date : "",
+    duration: Number(t.duration) || 30,
+    steps: Array.isArray(t.steps)
+      ? t.steps.filter(s => s && typeof s.text === "string").map(s => ({ id: s.id || uid(), text: s.text, done: !!s.done }))
+      : [],
+  };
+}
+
 function loadState() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    let raw = localStorage.getItem(STORAGE_KEY);
+    let fromV1 = false;
+    if (!raw) { raw = localStorage.getItem(OLD_STORAGE_KEY); fromV1 = !!raw; }
     if (!raw) return defaultState();
     const parsed = JSON.parse(raw);
     const d = defaultState();
-    return {
+    const s = {
       ...d, ...parsed,
       checklistItems: { ...d.checklistItems, ...(parsed.checklistItems || {}) },
+      tasks: (parsed.tasks || []).map(normalizeTask),
+      triageOrder: Array.isArray(parsed.triageOrder) ? parsed.triageOrder : [],
     };
+    if (fromV1) {
+      // v1 had 7 phases: "Just Do It" (5) and "Reflect" (6) moved one step later.
+      s.phase = parsed.phase >= 5 ? parsed.phase + 1 : (parsed.phase || 0);
+    }
+    s.phase = Math.max(0, Math.min(PHASES.length - 1, Number(s.phase) || 0));
+    return s;
   } catch { return defaultState(); }
 }
 function saveState() {
@@ -732,20 +939,28 @@ function saveState() {
 
 /* ─── UTILS ─────────────────────────────────────────────────── */
 const $  = (sel, root = document) => root.querySelector(sel);
-const uid = () => Date.now() + Math.floor(Math.random() * 1000);
+let _uidSeq = 0;
+const uid = () => Date.now() * 100 + (_uidSeq++ % 100);
+const plural = (n, word) => `${n} ${word}${n !== 1 ? "s" : ""}`;
+const reduceMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
 function el(tag, attrs = {}, children = []) {
   const node = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs)) {
+    if (v == null || v === false) continue;
     if (k === "class") node.className = v;
     else if (k === "html") node.innerHTML = v;
     else if (k === "text") node.textContent = v;
+    else if (k === "value") node.value = v;
     else if (k.startsWith("on") && typeof v === "function") {
       node.addEventListener(k.slice(2).toLowerCase(), v);
     } else if (k === "style" && typeof v === "object") {
-      Object.assign(node.style, v);
+      for (const [prop, val] of Object.entries(v)) {
+        if (prop.startsWith("--")) node.style.setProperty(prop, val);
+        else node.style[prop] = val;
+      }
     } else {
-      node.setAttribute(k, v);
+      node.setAttribute(k, v === true ? "" : v);
     }
   }
   for (const c of [].concat(children)) {
@@ -756,12 +971,43 @@ function el(tag, attrs = {}, children = []) {
 }
 
 const SVG = {
-  check: `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20,6 9,17 4,12"/></svg>`,
+  check: `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20,6 9,17 4,12"/></svg>`,
   plus:  `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`,
-  trash: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,6 5,6 21,6"/><path d="M19,6l-1,14H6L5,6"/><path d="M10,11v6"/><path d="M14,11v6"/><path d="M9,6V4h6v2"/></svg>`,
+  trash: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><polyline points="3,6 5,6 21,6"/><path d="M19,6l-1,14H6L5,6"/><path d="M10,11v6"/><path d="M14,11v6"/><path d="M9,6V4h6v2"/></svg>`,
+  x:     `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>`,
+  bolt:  `<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z"/></svg>`,
+  up:    `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18,15 12,9 6,15"/></svg>`,
+  down:  `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6,9 12,15 18,9"/></svg>`,
+  top:   `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="4" x2="19" y2="4"/><polyline points="18,15 12,9 6,15"/><line x1="12" y1="9" x2="12" y2="21"/></svg>`,
+  cal:   `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="12" y1="14" x2="12" y2="18"/><line x1="10" y1="16" x2="14" y2="16"/></svg>`,
+  copy:  `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`,
+  dice:  `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1" fill="currentColor"/><circle cx="15.5" cy="15.5" r="1" fill="currentColor"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg>`,
   refresh: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23,4 23,10 17,10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>`,
   save: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17,21 17,13 7,13 7,21"/><polyline points="7,3 7,8 15,8"/></svg>`,
 };
+
+function badgeFor(task) {
+  const q = qInfo(task.quadrant);
+  return q
+    ? el("span", { class: "badge", style: { "--c": q.color }, text: q.label })
+    : el("span", { class: "badge", text: "Not sorted" });
+}
+
+function todayISO() {
+  const d = new Date();
+  const pad = n => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function whenText(task) {
+  const parts = [];
+  if (task.date) {
+    const d = new Date(task.date + "T00:00");
+    parts.push(d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }));
+  }
+  if (task.scheduledTime) parts.push(task.scheduledTime);
+  return parts.join(" @ ");
+}
 
 /* ─── TOAST ─────────────────────────────────────────────────── */
 let _toastTimer = null;
@@ -770,23 +1016,50 @@ function toast(msg, kind = "success") {
   t.textContent = msg;
   t.className = "toast show" + (kind === "error" ? " error" : "");
   clearTimeout(_toastTimer);
-  _toastTimer = setTimeout(() => t.classList.remove("show"), 2400);
+  _toastTimer = setTimeout(() => t.classList.remove("show"), 2600);
+}
+
+/* ─── CONFETTI ──────────────────────────────────────────────── */
+function celebrate(fromEl) {
+  if (reduceMotion()) return;
+  const r = fromEl?.getBoundingClientRect?.() || { left: innerWidth / 2, top: innerHeight / 2, width: 0, height: 0 };
+  const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+  const colors = ["#e2550f", "#2b8a3e", "#1c7ed6", "#7048e8", "#f59f00", "#e03131"];
+  for (let i = 0; i < 22; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const dist = 60 + Math.random() * 90;
+    const p = el("span", { class: "confetti" });
+    p.style.left = cx + "px";
+    p.style.top = cy + "px";
+    p.style.background = colors[i % colors.length];
+    p.style.setProperty("--dx", Math.cos(a) * dist + "px");
+    p.style.setProperty("--dy", Math.sin(a) * dist - 40 + "px");
+    p.style.setProperty("--r", (Math.random() * 540 - 270) + "deg");
+    document.body.appendChild(p);
+    setTimeout(() => p.remove(), 950);
+  }
 }
 
 /* ─── HEADER PIPS ───────────────────────────────────────────── */
 function renderPips() {
   const pipsEl = $("#pips");
   pipsEl.innerHTML = "";
-  PHASES.forEach((_, i) => {
+  PHASES.forEach((p, i) => {
     const cls = i < state.phase ? "done" : i === state.phase ? "current" : "";
-    pipsEl.appendChild(el("div", { class: `pip ${cls}` }));
+    pipsEl.appendChild(el("button", {
+      class: `pip ${cls}`,
+      type: "button",
+      title: `${i + 1}. ${p.title}`,
+      "aria-label": `Go to step ${i + 1}: ${p.title}`,
+      onclick: () => goTo(i),
+    }));
   });
 }
 
 /* ─── PHASE HEADER + TIP ────────────────────────────────────── */
 function phaseHeader(p) {
   return el("div", { class: "phase-header" }, [
-    el("div", { class: "phase-num", text: `Phase ${state.phase + 1} of ${PHASES.length}` }),
+    el("div", { class: "phase-num", text: `Step ${state.phase + 1} of ${PHASES.length}` }),
     el("h1", { class: "phase-title", text: p.title }),
     el("p", { class: "phase-sub", text: p.subtitle }),
   ]);
@@ -796,23 +1069,52 @@ function tipBlock(text) {
   return text ? el("div", { class: "tip", text: `"${text}"` }) : null;
 }
 
+/* ─── SHARED: ADD-TASK INPUT ────────────────────────────────── */
+function addTask(text, quadrant = null) {
+  const clean = String(text || "").trim();
+  if (!clean) return null;
+  const task = normalizeTask({ text: clean, quadrant });
+  state.tasks.push(task);
+  return task;
+}
+
+function taskInput(id, placeholder, onAdd) {
+  const submit = () => {
+    const input = $(`#${id}`);
+    const text = (input?.value || "").trim();
+    if (!text) return;
+    onAdd(text);
+    saveState(); render();
+    setTimeout(() => $(`#${id}`)?.focus(), 0);
+  };
+  return el("div", { class: "input-row" }, [
+    el("input", {
+      type: "text", id, placeholder,
+      onkeydown: (e) => { if (e.key === "Enter") submit(); },
+    }),
+    el("button", { class: "btn btn-primary btn-icon", "aria-label": "Add", onclick: submit, html: SVG.plus }),
+  ]);
+}
+
 /* ─── PHASE: CHECKLIST ──────────────────────────────────────── */
 function renderChecklist(p) {
   const items = state.checklistItems[p.id] || p.items.map(() => false);
   state.checklistItems[p.id] = items;
 
   const list = el("div", { class: "checklist" });
-  p.items.forEach((label, i) => {
+  p.items.forEach((item, i) => {
+    const label = typeof item === "string" ? item : item.text;
     const checked = !!items[i];
-    const card = el("button", {
+    list.appendChild(el("button", {
       class: `check-card ${checked ? "checked" : ""}`,
       type: "button",
       onclick: () => { items[i] = !items[i]; saveState(); render(); },
     }, [
       el("span", { class: "check-circle", html: checked ? SVG.check : "" }),
       el("span", { class: "check-text", text: label }),
-    ]);
-    list.appendChild(card);
+    ]));
+    if (item.extra === "breathing") list.appendChild(breathingPanel());
+    if (item.extra === "braindump") list.appendChild(mentalDumpPanel());
   });
 
   const done = items.filter(Boolean).length;
@@ -821,101 +1123,287 @@ function renderChecklist(p) {
   return el("div", {}, [phaseHeader(p), list]);
 }
 
-/* ─── PHASE: BRAIN DUMP ─────────────────────────────────────── */
-function renderBrainDump(p) {
-  const inputId = "braindump-input";
-  const wrap = el("div", {}, [phaseHeader(p)]);
+/* ─── BOX BREATHING ─────────────────────────────────────────── */
+// Runs on its own clock and finds its elements by id each frame, so a
+// re-render (for example ticking a checklist card) does not stop it.
+const BREATH_SIDE_MS = 4000;
+const BREATH_STEPS = [
+  { name: "Breathe in",  help: "Slowly through your nose." },
+  { name: "Hold",        help: "Keep the air in. Stay relaxed." },
+  { name: "Breathe out", help: "Slowly through your mouth." },
+  { name: "Hold",        help: "Stay empty. Stay relaxed." },
+];
+const breath = { running: false, start: 0, raf: 0 };
+// Square corners: bottom-left, top-left, top-right, bottom-right.
+const BOX = { x0: 20, y0: 20, x1: 160, y1: 160 };
+const BOX_CORNERS = [[BOX.x0, BOX.y1], [BOX.x0, BOX.y0], [BOX.x1, BOX.y0], [BOX.x1, BOX.y1]];
 
-  const inputRow = el("div", { class: "input-row" }, [
+function breathingPanel() {
+  const sides = BOX_CORNERS.map((c, i) => {
+    const n = BOX_CORNERS[(i + 1) % 4];
+    return `<line id="breathSide${i}" class="breath-side" x1="${c[0]}" y1="${c[1]}" x2="${n[0]}" y2="${n[1]}"/>`;
+  }).join("");
+  const svg = `<svg viewBox="0 0 180 180" aria-hidden="true">
+    <rect id="breathFill" class="breath-fill" x="20" y="20" width="140" height="140" rx="6"/>
+    <rect class="breath-track" x="20" y="20" width="140" height="140" rx="6"/>
+    ${sides}
+    <text id="breathCount" class="breath-count" x="90" y="104" text-anchor="middle"></text>
+    <circle id="breathDot" class="breath-dot" cx="20" cy="160" r="9"/>
+  </svg>`;
+  const panel = el("div", { class: "extra-panel" }, [
+    el("div", { class: "breath" }, [
+      el("div", { html: svg }),
+      el("div", { class: "breath-body" }, [
+        el("div", { class: "breath-step", id: "breathStep", text: "Ready?" }),
+        el("div", { class: "breath-help", id: "breathHelp", text: "Follow the dot around the square. 4 seconds per side." }),
+        el("button", {
+          class: `btn ${breath.running ? "" : "btn-dark"}`,
+          id: "breathBtn",
+          type: "button",
+          text: breath.running ? "Stop" : "Start breathing",
+          onclick: () => breath.running ? stopBreathing() : startBreathing(),
+        }),
+        el("div", { class: "breath-cycles", id: "breathCycles", text: "" }),
+      ]),
+    ]),
+  ]);
+  if (breath.running) requestAnimationFrame(breathFrame);
+  else setTimeout(drawBreathIdle, 0);
+  return panel;
+}
+
+function startBreathing() {
+  breath.running = true;
+  breath.start = performance.now();
+  const btn = $("#breathBtn");
+  if (btn) { btn.textContent = "Stop"; btn.classList.remove("btn-dark"); }
+  cancelAnimationFrame(breath.raf);
+  breath.raf = requestAnimationFrame(breathFrame);
+}
+
+function stopBreathing() {
+  const rounds = Math.floor((performance.now() - breath.start) / (BREATH_SIDE_MS * 4));
+  breath.running = false;
+  cancelAnimationFrame(breath.raf);
+  const btn = $("#breathBtn");
+  if (btn) { btn.textContent = "Start breathing"; btn.classList.add("btn-dark"); }
+  drawBreathIdle();
+  if (rounds >= 3) {
+    const items = state.checklistItems.mental;
+    if (items && !items[0]) { items[0] = true; saveState(); render(); toast(`Nice. ${plural(rounds, "round")} of box breathing.`); }
+  }
+}
+
+function drawBreathIdle() {
+  const dot = $("#breathDot"), fill = $("#breathFill");
+  if (!dot) return;
+  dot.setAttribute("cx", BOX.x0); dot.setAttribute("cy", BOX.y1);
+  setBreathFill(fill, 0.35);
+  $("#breathCount").textContent = "";
+  for (let i = 0; i < 4; i++) $(`#breathSide${i}`)?.classList.remove("on");
+  $("#breathStep").textContent = "Ready?";
+  $("#breathHelp").textContent = "Follow the dot around the square. 4 seconds per side.";
+  $("#breathCycles").textContent = "";
+}
+
+function setBreathFill(fill, scale) {
+  if (!fill) return;
+  const size = 140 * scale;
+  const off = 20 + (140 - size) / 2;
+  fill.setAttribute("x", off); fill.setAttribute("y", off);
+  fill.setAttribute("width", size); fill.setAttribute("height", size);
+}
+
+function breathFrame(now) {
+  if (!breath.running) return;
+  breath.raf = requestAnimationFrame(breathFrame);
+  const dot = $("#breathDot");
+  if (!dot) return; // left the phase; keep the clock going
+  const elapsed = now - breath.start;
+  const side = Math.floor(elapsed / BREATH_SIDE_MS) % 4;
+  const t = (elapsed % BREATH_SIDE_MS) / BREATH_SIDE_MS;
+  const ease = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+  const a = BOX_CORNERS[side], b = BOX_CORNERS[(side + 1) % 4];
+  dot.setAttribute("cx", a[0] + (b[0] - a[0]) * t);
+  dot.setAttribute("cy", a[1] + (b[1] - a[1]) * t);
+  const MIN = 0.35;
+  const scale = side === 0 ? MIN + (1 - MIN) * ease
+              : side === 1 ? 1
+              : side === 2 ? 1 - (1 - MIN) * ease
+              : MIN;
+  setBreathFill($("#breathFill"), scale);
+  for (let i = 0; i < 4; i++) $(`#breathSide${i}`)?.classList.toggle("on", i === side);
+  $("#breathCount").textContent = String(4 - Math.floor(t * 4));
+  $("#breathStep").textContent = BREATH_STEPS[side].name;
+  $("#breathHelp").textContent = BREATH_STEPS[side].help;
+  const rounds = Math.floor(elapsed / (BREATH_SIDE_MS * 4));
+  $("#breathCycles").textContent = rounds > 0 ? `${plural(rounds, "round")} done. 3 or 4 rounds is a good start.` : "Round 1";
+}
+
+/* ─── MENTAL BRAIN DUMP ─────────────────────────────────────── */
+function mentalDumpPanel() {
+  return el("div", { class: "extra-panel" }, [
+    el("div", { class: "hint", text: "Type anything that is in your head. No rules, no order. Get it out so it stops taking up space." }),
+    el("textarea", {
+      id: "mentalDump",
+      placeholder: "I keep thinking about...",
+      style: { minHeight: "160px" },
+      value: state.mentalDump || "",
+      oninput: (e) => { state.mentalDump = e.target.value; saveState(); },
+    }),
+    el("div", { class: "row-actions" }, [
+      el("button", {
+        class: "btn btn-sm",
+        type: "button",
+        text: "Add each line to my to-do list",
+        onclick: () => {
+          const existing = new Set(state.tasks.map(t => t.text.toLowerCase()));
+          const lines = (state.mentalDump || "").split("\n").map(l => l.replace(/^[-*•\d.)\s]+/, "").trim()).filter(Boolean);
+          let added = 0;
+          lines.forEach(l => { if (!existing.has(l.toLowerCase())) { addTask(l); existing.add(l.toLowerCase()); added++; } });
+          saveState();
+          toast(added ? `Added ${plural(added, "to-do")}. You will see them in the next step.` : "Nothing new to add");
+        },
+      }),
+    ]),
+  ]);
+}
+
+/* ─── PHASE: LIST TO-DOS ────────────────────────────────────── */
+let _addCategory = "todo";
+
+function taskRow(task, i) {
+  const isQuick = task.quadrant === "quick";
+  return el("div", { class: `task-row ${isQuick ? "quick" : ""}` }, [
+    el("span", { class: "task-index", text: String(i + 1) }),
     el("input", {
       type: "text",
-      id: inputId,
-      placeholder: "Write a task and press Enter...",
-      onkeydown: (e) => { if (e.key === "Enter") addBrainDump(); },
+      class: "task-text",
+      value: task.text,
+      "aria-label": "Task",
+      oninput: (e) => { task.text = e.target.value; saveState(); },
     }),
     el("button", {
-      class: "btn btn-primary btn-icon",
-      "aria-label": "Add task",
-      onclick: addBrainDump,
-      html: SVG.plus,
+      class: `icon-btn ${isQuick ? "on" : ""}`,
+      type: "button",
+      title: isQuick ? "Move to regular to-dos" : "Mark as under 3 minutes",
+      "aria-label": isQuick ? "Move to regular to-dos" : "Mark as under 3 minutes",
+      html: SVG.bolt,
+      onclick: () => { task.quadrant = isQuick ? null : "quick"; saveState(); render(); },
+    }),
+    el("button", {
+      class: "icon-btn danger",
+      type: "button",
+      "aria-label": "Remove",
+      html: SVG.trash,
+      onclick: () => { state.tasks = state.tasks.filter(t => t.id !== task.id); saveState(); render(); },
     }),
   ]);
-  wrap.appendChild(inputRow);
+}
+
+function renderListPhase(p) {
+  const wrap = el("div", {}, [phaseHeader(p)]);
+
+  wrap.appendChild(el("div", { class: "seg", role: "tablist" }, [
+    el("button", {
+      class: _addCategory === "todo" ? "active" : "",
+      type: "button",
+      text: "To-do",
+      onclick: () => { _addCategory = "todo"; render(); $("#list-input")?.focus(); },
+    }),
+    el("button", {
+      class: `quick ${_addCategory === "quick" ? "active" : ""}`,
+      type: "button",
+      html: `${SVG.bolt}<span>Under 3 minutes</span>`,
+      onclick: () => { _addCategory = "quick"; render(); $("#list-input")?.focus(); },
+    }),
+  ]));
+  wrap.appendChild(taskInput(
+    "list-input",
+    _addCategory === "quick" ? "A small thing (under 3 minutes)..." : "Write a task and press Enter...",
+    (text) => addTask(text, _addCategory === "quick" ? "quick" : null),
+  ));
+
+  const regular = state.tasks.filter(t => t.quadrant !== "quick");
+  const quick = state.tasks.filter(t => t.quadrant === "quick");
 
   if (state.tasks.length === 0) {
-    wrap.appendChild(el("div", { class: "empty", text: "Start typing — get everything out of your head" }));
+    wrap.appendChild(el("div", { class: "empty", text: "Start typing. Get everything out of your head." }));
   } else {
-    const list = el("div", { class: "task-list" });
-    state.tasks.forEach((task, i) => {
-      const row = el("div", { class: "task-row" }, [
-        el("span", { class: "task-index", text: String(i + 1) }),
-        el("input", {
-          type: "text",
-          class: "task-text",
-          value: task.text,
-          oninput: (e) => { task.text = e.target.value; saveState(); },
-        }),
-        el("button", {
-          class: "task-remove",
-          "aria-label": "Remove",
-          onclick: () => {
-            state.tasks = state.tasks.filter(t => t.id !== task.id);
-            saveState(); render();
-          },
-          html: SVG.trash,
-        }),
-      ]);
-      list.appendChild(row);
-    });
-    list.appendChild(el("div", { class: "check-counter", text: `${state.tasks.length} task${state.tasks.length !== 1 ? "s" : ""} captured` }));
-    wrap.appendChild(list);
+    const regWrap = el("div", { class: "section" }, [
+      el("span", { class: "section-label", text: `To-dos (${regular.length})` }),
+    ]);
+    const regList = el("div", { class: "task-list" });
+    regular.forEach((t, i) => regList.appendChild(taskRow(t, i)));
+    if (!regular.length) regList.appendChild(el("div", { class: "empty small", text: "None yet" }));
+    regWrap.appendChild(regList);
+
+    const quickWrap = el("div", { class: "section" }, [
+      el("span", { class: "section-label", text: `Under 3 minutes (${quick.length})` }),
+      el("div", { class: "hint", text: "Small tasks you can finish in less than 3 minutes. You will knock these out fast. No need to schedule them." }),
+    ]);
+    const quickList = el("div", { class: "task-list" });
+    quick.forEach((t, i) => quickList.appendChild(taskRow(t, i)));
+    if (!quick.length) quickList.appendChild(el("div", { class: "empty small", text: "Tap the lightning icon on a task to move it here" }));
+    quickWrap.appendChild(quickList);
+
+    wrap.appendChild(regWrap);
+    wrap.appendChild(quickWrap);
+    wrap.appendChild(el("div", { class: "check-counter", style: { marginTop: "10px" }, text: `${plural(state.tasks.length, "task")} captured` }));
   }
-  setTimeout(() => $(`#${inputId}`)?.focus(), 0);
+  setTimeout(() => { if (!document.activeElement || document.activeElement === document.body) $("#list-input")?.focus(); }, 0);
   return wrap;
 }
 
-function addBrainDump() {
-  const input = $("#braindump-input");
-  const text = (input?.value || "").trim();
-  if (!text) return;
-  state.tasks.push({ id: uid(), text, quadrant: null, done: false, scheduledTime: "" });
+/* ─── PHASE: SORT (MATRIX) ──────────────────────────────────── */
+let _dragId = null;
+let _pickId = null; // tap a task, then tap a box (works on touch screens)
+
+function assignTask(id, quadrant) {
+  const task = state.tasks.find(t => t.id === id);
+  if (task) task.quadrant = quadrant;
+  _pickId = null;
   saveState(); render();
 }
 
-/* ─── PHASE: EISENHOWER MATRIX ──────────────────────────────── */
-let _dragId = null;
+function draggable(task, extra) {
+  return {
+    draggable: "true",
+    ondragstart: (e) => { _dragId = task.id; e.dataTransfer?.setData("text/plain", String(task.id)); },
+    ondragend: () => { _dragId = null; },
+    onclick: (e) => {
+      if (e.target.closest(".icon-btn")) return;
+      e.stopPropagation();
+      _pickId = _pickId === task.id ? null : task.id;
+      render();
+    },
+    ...extra,
+  };
+}
 
 function renderMatrix(p) {
   const wrap = el("div", {}, [phaseHeader(p)]);
 
+  wrap.appendChild(taskInput("sort-input", "Thought of another to-do? Add it here...", (text) => addTask(text)));
+
   if (state.tasks.length === 0) {
-    wrap.appendChild(el("div", { class: "empty", text: "Go back to the Brain Dump phase and add some tasks first." }));
+    wrap.appendChild(el("div", { class: "empty", text: "No to-dos yet. Add one above, or go back a step." }));
     return wrap;
   }
+
+  wrap.appendChild(el("div", { class: "hint", text: "Drag a task into a box. Or tap a task, then tap a box." }));
 
   const unassigned = state.tasks.filter(t => !t.quadrant);
   if (unassigned.length > 0) {
     const u = el("div", { class: "unassigned-wrap" }, [
-      el("span", { class: "section-label", text: `Unassigned (${unassigned.length})` }),
+      el("span", { class: "section-label", text: `Not sorted yet (${unassigned.length})` }),
     ]);
-    const list = el("div", { class: "unassigned-list" });
+    const list = el("div", { class: "chip-list" });
     unassigned.forEach(task => {
-      const chip = el("div", {
-        class: "unassigned-chip",
-        draggable: "true",
-        ondragstart: (e) => { _dragId = task.id; e.dataTransfer?.setData("text/plain", String(task.id)); },
-        ondragend: () => { _dragId = null; },
+      list.appendChild(el("div", draggable(task, {
+        class: `chip ${_pickId === task.id ? "picked" : ""}`,
         text: task.text,
-      });
-      chip.addEventListener("click", () => {
-        const choice = prompt(
-          `Assign "${task.text}" to:\n1 = Do First (Urgent + Important)\n2 = Schedule (Not Urgent + Important)\n3 = Delegate (Urgent + Not Important)\n4 = Eliminate (Not Urgent + Not Important)`,
-          "2"
-        );
-        const map = { "1": "q1", "2": "q2", "3": "q3", "4": "q4" };
-        if (map[choice]) { task.quadrant = map[choice]; saveState(); render(); }
-      });
-      list.appendChild(chip);
+      })));
     });
     u.appendChild(list);
     wrap.appendChild(u);
@@ -925,171 +1413,553 @@ function renderMatrix(p) {
   QUADRANTS.forEach(q => {
     const qTasks = state.tasks.filter(t => t.quadrant === q.id);
     const quadrant = el("div", {
-      class: `quadrant ${q.id}`,
+      class: `quadrant ${q.id} ${_pickId ? "target" : ""}`,
       ondragover: (e) => { e.preventDefault(); quadrant.classList.add("drag-over"); },
       ondragleave: () => quadrant.classList.remove("drag-over"),
       ondrop: (e) => {
         e.preventDefault();
-        quadrant.classList.remove("drag-over");
         const id = Number(e.dataTransfer?.getData("text/plain") || _dragId);
-        const task = state.tasks.find(t => t.id === id);
-        if (task) { task.quadrant = q.id; saveState(); render(); }
+        assignTask(id, q.id);
       },
+      onclick: () => { if (_pickId) assignTask(_pickId, q.id); },
     }, [
       el("div", { class: "q-label", text: q.label }),
       el("div", { class: "q-sub",   text: q.sub }),
     ]);
     const tlist = el("div", { class: "q-tasks" });
     qTasks.forEach(task => {
-      tlist.appendChild(el("div", {
-        class: "q-task",
-        draggable: "true",
-        ondragstart: (e) => { _dragId = task.id; e.dataTransfer?.setData("text/plain", String(task.id)); },
-        ondragend: () => { _dragId = null; },
-      }, [
+      tlist.appendChild(el("div", draggable(task, {
+        class: `q-task ${_pickId === task.id ? "picked" : ""}`,
+      }), [
         el("span", { class: "q-task-text", text: task.text }),
         el("button", {
-          class: "q-task-remove",
-          "aria-label": "Unassign",
-          text: "×",
-          onclick: () => { task.quadrant = null; saveState(); render(); },
+          class: "icon-btn",
+          type: "button",
+          "aria-label": "Take out of this box",
+          title: "Take out of this box",
+          html: SVG.x,
+          onclick: (e) => { e.stopPropagation(); assignTask(task.id, null); },
         }),
       ]));
     });
-    if (qTasks.length === 0) {
-      tlist.appendChild(el("div", { class: "q-empty", text: "Drop tasks here" }));
-    }
+    if (qTasks.length === 0) tlist.appendChild(el("div", { class: "q-empty", text: "Drop tasks here" }));
     quadrant.appendChild(tlist);
     matrix.appendChild(quadrant);
   });
   wrap.appendChild(matrix);
 
   wrap.appendChild(el("div", { class: "key-question" }, [
-    el("div", { class: "key-question-label", text: "Key Question" }),
+    el("div", { class: "key-question-label", text: "Key question" }),
     el("div", { class: "key-question-text",
-      html: `What <em>one thing</em>, if done, would make everything else on this list easier or irrelevant?` }),
+      html: `What <em>one thing</em>, if done, would make everything else on this list easier or not needed?` }),
   ]));
 
   return wrap;
 }
 
-/* ─── PHASE: SCHEDULE ───────────────────────────────────────── */
-function prioritizedTasks() {
-  const order = { q1: 0, q2: 1, q3: 2, null: 3, undefined: 3 };
-  return state.tasks
-    .filter(t => t.quadrant !== "q4")
-    .slice()
-    .sort((a, b) => (order[a.quadrant] ?? 3) - (order[b.quadrant] ?? 3));
+/* ─── PRIORITY ORDER ────────────────────────────────────────── */
+const PRIORITY_RANK = { q1: 0, quick: 1, q2: 2 };
+function priorityCompare(a, b) {
+  const ra = PRIORITY_RANK[a.quadrant] ?? 3, rb = PRIORITY_RANK[b.quadrant] ?? 3;
+  if (ra !== rb) return ra - rb;
+  const wa = (a.date || "9999") + (a.scheduledTime || "99:99");
+  const wb = (b.date || "9999") + (b.scheduledTime || "99:99");
+  if (wa !== wb) return wa < wb ? -1 : 1;
+  return state.tasks.indexOf(a) - state.tasks.indexOf(b);
 }
+
+// Tasks you schedule: everything except "Eliminate" and the under-3-minute ones.
+function schedulableTasks() {
+  return state.tasks.filter(t => t.quadrant !== "q4" && t.quadrant !== "quick").slice().sort(priorityCompare);
+}
+
+/* ─── PHASE: SCHEDULE ───────────────────────────────────────── */
+function gcalUrl(task) {
+  const date = task.date || todayISO();
+  const compact = s => s.replace(/[-:]/g, "");
+  let dates;
+  if (task.scheduledTime) {
+    const start = new Date(`${date}T${task.scheduledTime}`);
+    const end = new Date(start.getTime() + (task.duration || 30) * 60000);
+    const fmt = d => {
+      const pad = n => String(n).padStart(2, "0");
+      return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}T${pad(d.getHours())}${pad(d.getMinutes())}00`;
+    };
+    dates = `${fmt(start)}/${fmt(end)}`;
+  } else {
+    const next = new Date(date + "T00:00");
+    next.setDate(next.getDate() + 1);
+    const pad = n => String(n).padStart(2, "0");
+    dates = `${compact(date)}/${next.getFullYear()}${pad(next.getMonth() + 1)}${pad(next.getDate())}`;
+  }
+  const details = ["Planned with the Sharp Axe Method."];
+  if (task.steps?.length) details.push("", "Steps:", ...task.steps.map(s => `- ${s.text}`));
+  const params = new URLSearchParams({ action: "TEMPLATE", text: task.text, dates, details: details.join("\n") });
+  try { params.set("ctz", Intl.DateTimeFormat().resolvedOptions().timeZone); } catch {}
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+
+const DURATIONS = [15, 30, 45, 60, 90, 120, 180, 240];
+const durLabel = m => m < 60 ? `${m} min` : `${m / 60} hr${m > 60 ? "s" : ""}`;
 
 function renderSchedule(p) {
   const wrap = el("div", {}, [phaseHeader(p)]);
 
-  const rulesWrap = el("div", { style: { marginBottom: "24px" } }, [
-    el("span", { class: "section-label", text: "Scheduling Rules" }),
-  ]);
-  p.rules.forEach(rule => {
-    rulesWrap.appendChild(el("div", { class: "rule" }, [
-      el("span", { class: "rule-arrow", text: "→" }),
-      document.createTextNode(rule),
+  const rules = el("div", { class: "rules" });
+  p.rules.forEach(([bold, rest], i) => {
+    rules.appendChild(el("div", { class: "rule" }, [
+      el("span", { class: "rule-num", text: String(i + 1) }),
+      el("span", {}, [el("strong", { text: bold }), " " + rest]),
     ]));
   });
-  wrap.appendChild(rulesWrap);
+  wrap.appendChild(el("div", {}, [el("span", { class: "section-label", text: "Quick rules" }), rules]));
 
-  const tasks = prioritizedTasks();
-  if (tasks.length > 0) {
-    const tWrap = el("div", {}, [
-      el("span", { class: "section-label", text: "Your Schedule (most important first)" }),
-    ]);
-    tasks.forEach((task, i) => {
-      const q = QUADRANTS.find(q => q.id === task.quadrant);
-      const qColor = task.quadrant === "q1" ? "var(--q1)"
-                   : task.quadrant === "q2" ? "var(--q2)"
-                   : task.quadrant === "q3" ? "#b8941f"
-                   : "var(--ink-muted)";
-      tWrap.appendChild(el("div", { class: "schedule-task" }, [
-        el("span", { class: "schedule-task-num", text: String(i + 1) }),
-        el("div", { class: "schedule-task-body" }, [
-          el("div", { class: "schedule-task-text", text: task.text }),
-          q ? el("div", { class: "schedule-task-quad", style: { color: qColor }, text: q.label }) : null,
-        ]),
-        el("input", {
-          type: "time",
-          value: task.scheduledTime || "",
-          oninput: (e) => { task.scheduledTime = e.target.value; saveState(); },
-        }),
-      ]));
-    });
-    wrap.appendChild(tWrap);
+  const tasks = schedulableTasks();
+  const tWrap = el("div", { class: "section" }, [
+    el("span", { class: "section-label", text: "Your schedule (most important first)" }),
+  ]);
+  if (tasks.length === 0) {
+    tWrap.appendChild(el("div", { class: "empty small", text: "Nothing to schedule. Sort some tasks into Do First or Schedule." }));
   }
+  tasks.forEach((task, i) => {
+    const gcal = el("a", {
+      class: "btn btn-sm gcal-btn",
+      href: gcalUrl(task),
+      target: "_blank",
+      rel: "noopener",
+      title: "Opens Google Calendar with this task filled in",
+      html: `${SVG.cal}<span>Add to Google Calendar</span>`,
+    });
+    const refresh = () => { saveState(); gcal.href = gcalUrl(task); };
+    const durSel = el("select", {
+      "aria-label": "How long",
+      onchange: (e) => { task.duration = Number(e.target.value); refresh(); },
+    }, DURATIONS.map(m => el("option", { value: String(m), text: durLabel(m) })));
+    durSel.value = String(task.duration || 30);
 
-  wrap.appendChild(el("div", { style: { marginTop: "20px" } }, [
-    el("span", { class: "section-label", text: "Communicate" }),
-    el("textarea", {
-      placeholder: "Send messages to coworkers and clients about when you can complete tasks. Always say at least one day later than you suspect. If there are people that rely on you, let them know you are overwhelmed...",
-      oninput: (e) => { state.scheduleNotes = e.target.value; saveState(); },
-      text: state.scheduleNotes || "",
-    }),
-  ]));
+    tWrap.appendChild(el("div", { class: "schedule-task" }, [
+      el("div", { class: "schedule-task-top" }, [
+        el("span", { class: "schedule-task-num", text: String(i + 1) }),
+        el("div", { class: "schedule-task-text", text: task.text }),
+        badgeFor(task),
+      ]),
+      el("div", { class: "schedule-controls" }, [
+        el("input", {
+          type: "date", "aria-label": "Date", value: task.date || "",
+          oninput: (e) => { task.date = e.target.value; refresh(); },
+        }),
+        el("input", {
+          type: "time", "aria-label": "Start time", value: task.scheduledTime || "",
+          oninput: (e) => { task.scheduledTime = e.target.value; refresh(); },
+        }),
+        durSel,
+        gcal,
+      ]),
+    ]));
+  });
+  if (tasks.length) {
+    tWrap.appendChild(el("div", { class: "hint", style: { marginTop: "6px" }, text: "Tip: pick the length after you double your guess. No date means today. No time means an all-day event." }));
+  }
+  wrap.appendChild(tWrap);
 
+  const quickCount = state.tasks.filter(t => t.quadrant === "quick" && !t.done).length;
+  if (quickCount) {
+    wrap.appendChild(el("div", { class: "note-line", text: `${plural(quickCount, "under-3-minute task")} not listed here. You will do those in Triage.` }));
+  }
   return wrap;
 }
 
-/* ─── PHASE: EXECUTION ──────────────────────────────────────── */
-function renderExecution(p) {
+/* ─── PHASE: COMMUNICATE ────────────────────────────────────── */
+function renderCommunicate(p) {
   const wrap = el("div", {}, [phaseHeader(p)]);
-  const tasks = prioritizedTasks();
-  const done  = tasks.filter(t => t.done).length;
-  const total = tasks.length;
-  const pct   = total === 0 ? 0 : Math.round((done / total) * 100);
 
-  const progress = el("div", { class: "progress-wrap" }, [
+  const rules = el("div", { class: "rules" });
+  p.tips.forEach(([bold, rest], i) => {
+    rules.appendChild(el("div", { class: "rule" }, [
+      el("span", { class: "rule-num", text: String(i + 1) }),
+      el("span", {}, [el("strong", { text: bold }), " " + rest]),
+    ]));
+  });
+  wrap.appendChild(rules);
+
+  const dated = schedulableTasks().filter(t => t.date || t.scheduledTime);
+  if (dated.length) {
+    const ref = el("div", { class: "ref-list" });
+    dated.forEach(t => ref.appendChild(el("div", { class: "ref-row" }, [
+      el("span", { text: t.text }),
+      el("span", { class: "ref-when", text: whenText(t) }),
+    ])));
+    wrap.appendChild(el("div", { class: "section" }, [
+      el("span", { class: "section-label", text: "Your dates (for reference)" }),
+      ref,
+    ]));
+  }
+
+  const ta = el("textarea", {
+    id: "commNotes",
+    style: { minHeight: "180px" },
+    placeholder: "Who needs to hear from you? Draft your messages here...",
+    value: state.scheduleNotes || "",
+    oninput: (e) => { state.scheduleNotes = e.target.value; saveState(); },
+  });
+  wrap.appendChild(el("div", { class: "section" }, [
+    el("span", { class: "section-label", text: "Messages" }),
+    ta,
+    el("div", { class: "row-actions" }, [
+      el("button", {
+        class: "btn btn-sm", type: "button", text: "Insert a template",
+        onclick: () => {
+          const tpl = "Hi [name], I am working on [task]. I can have it to you by [date + 1 day]. I'm a bit overloaded right now, so thank you for your patience.\n";
+          state.scheduleNotes = (state.scheduleNotes ? state.scheduleNotes.replace(/\s*$/, "\n\n") : "") + tpl;
+          ta.value = state.scheduleNotes; saveState(); ta.focus();
+        },
+      }),
+      el("button", {
+        class: "btn btn-sm", type: "button", html: `${SVG.copy}<span>Copy</span>`,
+        onclick: async () => {
+          try { await navigator.clipboard.writeText(state.scheduleNotes || ""); toast("Copied"); }
+          catch { ta.select(); toast("Press Ctrl+C to copy", "error"); }
+        },
+      }),
+    ]),
+  ]));
+  return wrap;
+}
+
+/* ─── PHASE: TRIAGE ─────────────────────────────────────────── */
+// ADHD-friendly: one big "right now" task, a visual focus timer, tiny steps,
+// "not now" without guilt, a "pick for me" button, short lists, and a small
+// celebration for every finished task.
+let _stepsOpenFor = null;
+let _showAllUpNext = false;
+let _showDone = false;
+
+const PRAISE = [
+  "Done! Nice work.", "One less thing. Keep going.", "That's momentum.",
+  "Look at you go.", "Checked off. Take a breath.", "Boom. Next one.",
+];
+
+const timer = { total: 15 * 60, left: 15 * 60, running: false, endAt: 0, iv: 0 };
+
+function triageList() {
+  const remaining = state.tasks.filter(t => !t.done && t.quadrant !== "q4");
+  const ids = new Set(remaining.map(t => t.id));
+  const order = state.triageOrder.filter(id => ids.has(id));
+  const seen = new Set(order);
+  remaining.filter(t => !seen.has(t.id)).sort(priorityCompare).forEach(t => order.push(t.id));
+  state.triageOrder = order;
+  const byId = new Map(remaining.map(t => [t.id, t]));
+  return order.map(id => byId.get(id));
+}
+
+function moveInOrder(id, toIndex) {
+  const order = state.triageOrder.filter(x => x !== id);
+  order.splice(Math.max(0, Math.min(order.length, toIndex)), 0, id);
+  state.triageOrder = order;
+  saveState(); render();
+}
+
+function completeTask(task, fromEl) {
+  task.done = true;
+  celebrate(fromEl);
+  toast(PRAISE[Math.floor(Math.random() * PRAISE.length)]);
+  if (_stepsOpenFor === task.id) _stepsOpenFor = null;
+  resetTimer();
+  saveState(); render();
+}
+
+function fmtTime(sec) {
+  const s = Math.max(0, Math.ceil(sec));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+
+function timerTick() {
+  if (timer.running) {
+    timer.left = (timer.endAt - Date.now()) / 1000;
+    if (timer.left <= 0) {
+      timer.left = 0; timer.running = false; clearInterval(timer.iv);
+      chime();
+      toast("Time's up! Stand up, stretch, then keep going or take a break.");
+    }
+  }
+  const text = $("#timerText"), ring = $("#timerRing"), btn = $("#timerToggle");
+  if (!text) return;
+  text.textContent = fmtTime(timer.left);
+  const C = 2 * Math.PI * 52;
+  ring.style.strokeDasharray = C;
+  ring.style.strokeDashoffset = C * (1 - timer.left / timer.total);
+  btn.textContent = timer.running ? "Pause" : (timer.left < timer.total && timer.left > 0 ? "Resume" : "Start");
+}
+
+function toggleTimer() {
+  if (timer.running) {
+    timer.running = false; clearInterval(timer.iv);
+  } else {
+    if (timer.left <= 0) timer.left = timer.total;
+    timer.running = true;
+    timer.endAt = Date.now() + timer.left * 1000;
+    clearInterval(timer.iv);
+    timer.iv = setInterval(timerTick, 250);
+  }
+  timerTick();
+}
+
+function resetTimer(minutes) {
+  if (minutes) timer.total = minutes * 60;
+  timer.running = false; clearInterval(timer.iv);
+  timer.left = timer.total;
+  timerTick();
+}
+
+function chime() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [660, 880, 990].forEach((f, i) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.frequency.value = f; o.type = "sine";
+      g.gain.setValueAtTime(0.0001, ctx.currentTime + i * 0.18);
+      g.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + i * 0.18 + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + i * 0.18 + 0.5);
+      o.connect(g).connect(ctx.destination);
+      o.start(ctx.currentTime + i * 0.18); o.stop(ctx.currentTime + i * 0.18 + 0.55);
+    });
+  } catch {}
+}
+
+function timerBlock() {
+  const svg = `<svg viewBox="0 0 120 120" aria-hidden="true">
+    <circle class="timer-track" cx="60" cy="60" r="52"/>
+    <circle id="timerRing" class="timer-ring" cx="60" cy="60" r="52"/>
+    <text id="timerText" class="timer-text" x="60" y="69" text-anchor="middle"></text>
+  </svg>`;
+  const presets = el("div", { class: "timer-presets" }, [5, 15, 25].map(m => el("button", {
+    type: "button",
+    class: timer.total === m * 60 ? "active" : "",
+    text: `${m}m`,
+    title: `${m} minute focus`,
+    onclick: () => { resetTimer(m); render(); },
+  })));
+  const block = el("div", { class: "timer" }, [
+    el("div", { html: svg }),
+    presets,
+    el("div", { class: "timer-controls" }, [
+      el("button", { class: "btn btn-sm btn-dark", id: "timerToggle", type: "button", text: "Start", onclick: toggleTimer }),
+      el("button", { class: "btn btn-sm btn-ghost", type: "button", text: "Reset", onclick: () => resetTimer() }),
+    ]),
+  ]);
+  setTimeout(timerTick, 0);
+  return block;
+}
+
+function stepsBlock(task) {
+  const steps = task.steps || (task.steps = []);
+  const open = _stepsOpenFor === task.id || steps.length > 0;
+  if (!open) return null;
+  const nextIdx = steps.findIndex(s => !s.done);
+  const list = el("div", { class: "steps" });
+  steps.forEach((s, i) => {
+    list.appendChild(el("div", { class: `step ${s.done ? "done" : ""} ${i === nextIdx ? "next" : ""}` }, [
+      el("span", {
+        class: "check-circle", role: "checkbox", "aria-checked": String(s.done), tabindex: "0",
+        html: s.done ? SVG.check : "",
+        onclick: () => { s.done = !s.done; saveState(); render(); },
+        onkeydown: (e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); s.done = !s.done; saveState(); render(); } },
+      }),
+      el("span", { class: "step-text", text: (i === nextIdx ? "Next: " : "") + s.text }),
+      el("button", {
+        class: "icon-btn danger", type: "button", "aria-label": "Remove step", html: SVG.x,
+        onclick: () => { task.steps = steps.filter(x => x.id !== s.id); saveState(); render(); },
+      }),
+    ]));
+  });
+  const inputId = "step-input";
+  const add = () => {
+    const v = ($(`#${inputId}`)?.value || "").trim();
+    if (!v) return;
+    steps.push({ id: uid(), text: v, done: false });
+    saveState(); render();
+    setTimeout(() => $(`#${inputId}`)?.focus(), 0);
+  };
+  return el("div", {}, [
+    el("span", { class: "section-label", text: "Tiny steps" }),
+    list,
+    el("input", {
+      type: "text", id: inputId, class: "step-input",
+      placeholder: steps.length ? "Add another step..." : "What is the very first tiny step? (for example: open the file)",
+      onkeydown: (e) => { if (e.key === "Enter") add(); },
+    }),
+  ]);
+}
+
+function renderTriage(p) {
+  const wrap = el("div", {}, [phaseHeader(p)]);
+  const active = state.tasks.filter(t => t.quadrant !== "q4");
+  const total = active.length;
+  const done  = active.filter(t => t.done).length;
+  const pct   = total === 0 ? 0 : Math.round((done / total) * 100);
+  const mood  = done === 0 ? "Pick one thing. Just start."
+              : pct < 50 ? "Good start. Keep rolling."
+              : pct < 100 ? "More than halfway. Nice."
+              : "All done! Go to Reflect.";
+
+  wrap.appendChild(el("div", { class: "progress-wrap" }, [
     el("div", { class: "progress-meta" }, [
-      el("span", { text: "Progress" }),
-      el("strong", { text: `${done} / ${total} tasks complete` }),
+      el("span", { text: mood }),
+      el("strong", { text: `${done} / ${total} done` }),
     ]),
     el("div", { class: "progress-track" }, [
       el("div", { class: "progress-fill", style: { width: `${pct}%` } }),
     ]),
-    pct === 100 && total > 0
-      ? el("div", { class: "progress-done", text: "🎉 All done! Move on to Reflect." })
-      : null,
-  ]);
-  wrap.appendChild(progress);
+  ]));
 
-  if (tasks.length === 0) {
-    wrap.appendChild(el("div", { class: "empty", text: "No tasks scheduled yet. Go back and add some!" }));
-    return wrap;
-  }
+  const list = triageList();
 
-  const list = el("div", { class: "checklist" });
-  tasks.forEach(task => {
-    const q = QUADRANTS.find(q => q.id === task.quadrant);
-    const qColor = task.quadrant === "q1" ? "var(--q1)"
-                 : task.quadrant === "q2" ? "var(--q2)"
-                 : task.quadrant === "q3" ? "#b8941f"
-                 : "var(--ink-muted)";
-    const meta = el("div", { class: "exec-task-meta" }, [
-      q ? el("span", { class: "exec-task-quad", style: { color: qColor }, text: q.label }) : null,
-      task.scheduledTime ? el("span", { class: "exec-task-time", text: `@ ${task.scheduledTime}` }) : null,
-    ]);
-    list.appendChild(el("button", {
-      class: `check-card ${task.done ? "checked" : ""}`,
-      type: "button",
-      onclick: () => { task.done = !task.done; saveState(); render(); },
-    }, [
-      el("span", { class: "check-circle large", html: task.done ? SVG.check : "" }),
-      el("div", { style: { flex: "1" } }, [
-        el("div", {
-          class: "check-text",
-          style: task.done ? { textDecoration: "line-through", color: "var(--ink-muted)" } : {},
-          text: task.text,
+  if (total === 0) {
+    wrap.appendChild(el("div", { class: "empty", text: "No tasks yet. Add one below, or go back to List Your To-Dos." }));
+  } else if (list.length === 0) {
+    wrap.appendChild(el("div", { class: "all-done" }, [
+      el("div", { class: "all-done-title", text: "Everything is done." }),
+      el("div", { class: "all-done-sub", text: "Take a real break. You earned it." }),
+    ]));
+  } else {
+    const task = list[0];
+    const meta = el("div", { class: "focus-meta" }, [badgeFor(task)]);
+    const when = whenText(task);
+    if (when) meta.appendChild(el("span", { class: "badge", text: when }));
+    if (task.steps?.length) meta.appendChild(el("span", { class: "badge", text: `${task.steps.filter(s => s.done).length}/${task.steps.length} steps` }));
+
+    const doneBtn = el("button", {
+      class: "btn btn-good btn-lg", type: "button", html: `${SVG.check}<span>Done</span>`,
+      onclick: (e) => completeTask(task, e.currentTarget),
+    });
+
+    wrap.appendChild(el("div", { class: "focus-card" }, [
+      el("div", { class: "focus-label", text: "Right now" }),
+      el("div", { class: "focus-text", text: task.text }),
+      meta,
+      el("div", { class: "focus-grid" }, [
+        el("div", { class: "focus-steps" }, [
+          stepsBlock(task) || el("div", { class: "hint", style: { margin: 0 }, text: "Feels too big? Break it into tiny steps. Not in the mood? Set a 5 minute timer and just begin." }),
+        ]),
+        timerBlock(),
+      ]),
+      el("div", { class: "focus-actions" }, [
+        doneBtn,
+        _stepsOpenFor === task.id || task.steps?.length ? null : el("button", {
+          class: "btn", type: "button", text: "Break it down",
+          onclick: () => { _stepsOpenFor = task.id; render(); setTimeout(() => $("#step-input")?.focus(), 0); },
         }),
-        meta,
+        list.length > 1 ? el("button", {
+          class: "btn btn-ghost", type: "button", text: "Not now",
+          title: "Move to the end of the list",
+          onclick: () => { moveInOrder(task.id, Infinity); toast("Moved to the end. That's okay."); },
+        }) : null,
       ]),
     ]));
-  });
-  wrap.appendChild(list);
+
+    // Stuck helpers
+    const firstQuick = list.findIndex(t => t.quadrant === "quick");
+    if (list.length > 1) {
+      wrap.appendChild(el("div", { class: "stuck-row" }, [
+        el("span", { text: "Stuck?" }),
+        el("button", {
+          class: "btn btn-sm", type: "button", html: `${SVG.dice}<span>Pick one for me</span>`,
+          onclick: () => {
+            const pool = list.slice(1, 6);
+            const pick = pool[Math.floor(Math.random() * pool.length)];
+            moveInOrder(pick.id, 0);
+            toast("Try this one.");
+          },
+        }),
+        firstQuick > 0 ? el("button", {
+          class: "btn btn-sm", type: "button", html: `${SVG.bolt}<span>Start with a quick win</span>`,
+          onclick: () => moveInOrder(list[firstQuick].id, 0),
+        }) : null,
+      ]));
+    }
+
+    // Up next (short by default, so the list does not overwhelm)
+    const rest = list.slice(1);
+    if (rest.length) {
+      const LIMIT = 4;
+      const shown = _showAllUpNext ? rest : rest.slice(0, LIMIT);
+      const upWrap = el("div", { class: "section" }, [
+        el("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" } }, [
+          el("span", { class: "section-label", style: { margin: 0 }, text: `Up next (${rest.length})` }),
+          el("button", {
+            class: "btn btn-sm btn-ghost", type: "button", text: "Sort by priority",
+            title: "Do First, then quick wins, then scheduled tasks by time",
+            onclick: () => { state.triageOrder = []; saveState(); render(); toast("Sorted by priority"); },
+          }),
+        ]),
+      ]);
+      const ul = el("div", { class: "task-list" });
+      shown.forEach((t, i) => {
+        const idx = i + 1;
+        ul.appendChild(el("div", { class: "up-row" }, [
+          el("span", { class: "up-num", text: String(idx + 1) }),
+          el("span", {
+            class: "check-circle", role: "checkbox", "aria-checked": "false", tabindex: "0",
+            title: "Mark done",
+            onclick: (e) => completeTask(t, e.currentTarget),
+            onkeydown: (e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); completeTask(t, e.currentTarget); } },
+          }),
+          el("span", { class: "up-text", text: t.text }),
+          badgeFor(t),
+          el("div", { class: "up-tools" }, [
+            el("button", { class: "icon-btn", type: "button", title: "Do this now", "aria-label": "Do this now", html: SVG.top, onclick: () => moveInOrder(t.id, 0) }),
+            el("button", { class: "icon-btn", type: "button", title: "Move up", "aria-label": "Move up", html: SVG.up, onclick: () => moveInOrder(t.id, idx - 1) }),
+            el("button", { class: "icon-btn", type: "button", title: "Move down", "aria-label": "Move down", html: SVG.down, onclick: () => moveInOrder(t.id, idx + 1) }),
+          ]),
+        ]));
+      });
+      upWrap.appendChild(ul);
+      if (rest.length > LIMIT) {
+        upWrap.appendChild(el("button", {
+          class: "btn btn-sm btn-ghost", type: "button", style: { marginTop: "8px" },
+          text: _showAllUpNext ? "Show less" : `Show ${rest.length - LIMIT} more`,
+          onclick: () => { _showAllUpNext = !_showAllUpNext; render(); },
+        }));
+      }
+      wrap.appendChild(upWrap);
+    }
+  }
+
+  // Park a new thought without losing focus
+  wrap.appendChild(el("div", { class: "section" }, [
+    el("span", { class: "section-label", text: "New thing popped up?" }),
+    taskInput("park-input", "Park it here so you can stay on task...", (text) => { addTask(text); toast("Parked. Back to it."); }),
+  ]));
+
+  // Done list (hidden by default)
+  const doneTasks = active.filter(t => t.done);
+  if (doneTasks.length) {
+    const dWrap = el("div", { class: "section" }, [
+      el("button", {
+        class: "btn btn-sm btn-ghost", type: "button",
+        text: `${_showDone ? "Hide" : "Show"} done (${doneTasks.length})`,
+        onclick: () => { _showDone = !_showDone; render(); },
+      }),
+    ]);
+    if (_showDone) {
+      const dl = el("div", { class: "task-list", style: { marginTop: "8px" } });
+      doneTasks.forEach(t => dl.appendChild(el("div", { class: "up-row done" }, [
+        el("span", {
+          class: "check-circle", role: "checkbox", "aria-checked": "true", tabindex: "0",
+          title: "Not done after all", html: SVG.check,
+          onclick: () => { t.done = false; saveState(); render(); },
+        }),
+        el("span", { class: "up-text", text: t.text }),
+      ])));
+      dWrap.appendChild(dl);
+    }
+    wrap.appendChild(dWrap);
+  }
+
+  const dropped = state.tasks.filter(t => t.quadrant === "q4").length;
+  if (dropped) {
+    wrap.appendChild(el("div", { class: "note-line", text: `${plural(dropped, "task")} in Eliminate. You chose to let ${dropped === 1 ? "it" : "them"} go.` }));
+  }
   return wrap;
 }
 
@@ -1107,6 +1977,7 @@ function renderReflect(p) {
       const active = state.reflectAnswers[q] === r;
       row.appendChild(el("button", {
         class: `rating-btn ${active ? "active" : ""}`,
+        type: "button",
         onclick: () => { state.reflectAnswers[q] = r; saveState(); render(); },
         text: r,
       }));
@@ -1115,18 +1986,18 @@ function renderReflect(p) {
     wrap.appendChild(card);
   });
 
-  wrap.appendChild(el("div", { style: { marginTop: "20px" } }, [
-    el("span", { class: "section-label", text: "Dig Deeper — Your Notes" }),
+  wrap.appendChild(el("div", { class: "section" }, [
+    el("span", { class: "section-label", text: "Dig deeper: your notes" }),
     el("textarea", {
       placeholder: "Why did this happen? Ask why again...",
+      value: state.reflectNotes || "",
       oninput: (e) => { state.reflectNotes = e.target.value; saveState(); },
-      text: state.reflectNotes || "",
     }),
   ]));
 
   const totalCount = state.tasks.length;
   const doneCount  = state.tasks.filter(t => t.done).length;
-  const rate = totalCount > 0 ? `${Math.round((doneCount / totalCount) * 100)}%` : "—";
+  const rate = totalCount > 0 ? `${Math.round((doneCount / totalCount) * 100)}%` : "-";
 
   wrap.appendChild(el("div", { class: "stats-banner" }, [
     el("div", { class: "stat" }, [
@@ -1143,15 +2014,15 @@ function renderReflect(p) {
     ]),
   ]));
 
-  // Save Session card — prominent button to download the full session
   wrap.appendChild(el("div", { class: "save-card" }, [
     el("div", { class: "save-card-body" }, [
       el("div", { class: "save-card-title", text: "Save this session" }),
       el("div", { class: "save-card-sub",
-        text: "Download a readable .txt with your tasks, schedule, notes, and reflection — so you have it after you reset." }),
+        text: "Download a .txt with your tasks, schedule, messages, and reflection, so you still have it after you reset." }),
     ]),
     el("button", {
       class: "btn btn-primary",
+      type: "button",
       onclick: () => downloadFullSession(),
       html: `${SVG.save}<span>Save Session</span>`,
     }),
@@ -1164,12 +2035,13 @@ function renderReflect(p) {
 function renderPhaseContent() {
   const p = PHASES[state.phase];
   switch (p.type) {
-    case "checklist":  return renderChecklist(p);
-    case "input-list": return renderBrainDump(p);
-    case "matrix":     return renderMatrix(p);
-    case "schedule":   return renderSchedule(p);
-    case "execution":  return renderExecution(p);
-    case "reflect":    return renderReflect(p);
+    case "checklist":   return renderChecklist(p);
+    case "input-list":  return renderListPhase(p);
+    case "matrix":      return renderMatrix(p);
+    case "schedule":    return renderSchedule(p);
+    case "communicate": return renderCommunicate(p);
+    case "triage":      return renderTriage(p);
+    case "reflect":     return renderReflect(p);
   }
 }
 
@@ -1181,15 +2053,28 @@ function renderQuote() {
     el("p", { text: `"The mind should not be kept continuously at the same pitch of concentration,` }),
     el("p", { text: `but given amusing diversions. Our minds must relax.` }),
     el("p", { text: `They will rise better, and keener after a rest."` }),
-    el("p", { class: "quote-attr", text: "— Seneca the Younger" }),
+    el("p", { class: "quote-attr", text: "Seneca the Younger" }),
   ]));
 }
 
-function render() {
+const ARROW_SVG = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12,5 19,12 12,19"/></svg>`;
+
+function goTo(i) {
+  const next = Math.max(0, Math.min(PHASES.length - 1, i));
+  if (next === state.phase) return;
+  state.phase = next;
+  _pickId = null;
+  saveState(); render(true);
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function render(animate = false) {
   renderPips();
 
   const content = $("#phaseContent");
   content.innerHTML = "";
+  content.classList.remove("enter");
+  if (animate) { void content.offsetWidth; content.classList.add("enter"); }
   content.appendChild(renderPhaseContent());
 
   const p = PHASES[state.phase];
@@ -1200,6 +2085,7 @@ function render() {
   const nextLabel = $("#nextLabel");
 
   backBtn.classList.toggle("nav-back-hidden", state.phase === 0);
+  backBtn.onclick = () => goTo(state.phase - 1);
 
   const isLast = state.phase === PHASES.length - 1;
   if (isLast) {
@@ -1210,29 +2096,17 @@ function render() {
     nextBtn.onclick = () => {
       if (confirm("Reset and start a new session? Your current session will be cleared from this browser. (Use Save Session first if you want a copy.)")) {
         state = defaultState();
-        saveState(); render();
+        saveState(); render(true);
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
     };
   } else {
-    nextLabel.textContent = state.phase === 0 ? "Begin" : "Continue";
+    nextLabel.textContent = state.phase === 0 ? "Begin" : `Next: ${PHASES[state.phase + 1].title}`;
     nextBtn.classList.add("btn-primary");
     nextBtn.classList.remove("btn-dark");
-    if (!nextBtn.querySelector("polyline[points='12,5 19,12 12,19']")) {
-      const svg = nextBtn.querySelector("svg");
-      if (svg) svg.outerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12,5 19,12 12,19"/></svg>`;
-    }
-    nextBtn.onclick = () => {
-      state.phase = Math.min(PHASES.length - 1, state.phase + 1);
-      saveState(); render();
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    };
+    nextBtn.querySelector("svg").outerHTML = ARROW_SVG;
+    nextBtn.onclick = () => goTo(state.phase + 1);
   }
-  backBtn.onclick = () => {
-    state.phase = Math.max(0, state.phase - 1);
-    saveState(); render();
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
 
   renderQuote();
 }
@@ -1267,13 +2141,16 @@ function exportTodos() {
   }
   const payload = {
     type: "sharp-axe-todos",
-    version: 1,
+    version: 2,
     exportedAt: new Date().toISOString(),
     tasks: state.tasks.map(t => ({
       text: t.text,
       quadrant: t.quadrant,
       done: !!t.done,
       scheduledTime: t.scheduledTime || "",
+      date: t.date || "",
+      duration: t.duration || 30,
+      steps: (t.steps || []).map(s => ({ text: s.text, done: !!s.done })),
     })),
   };
   downloadBlob(
@@ -1281,7 +2158,7 @@ function exportTodos() {
     JSON.stringify(payload, null, 2),
     "application/json"
   );
-  toast(`Exported ${state.tasks.length} todo${state.tasks.length !== 1 ? "s" : ""}`);
+  toast(`Exported ${plural(state.tasks.length, "todo")}`);
 }
 
 /* ---- IMPORT TODOS ---- */
@@ -1303,33 +2180,29 @@ async function handleFileImport(e) {
     } else {
       throw new Error("Unrecognized file format");
     }
+    // "q3" (the old Delegate box) is no longer used: those tasks come in unsorted.
     const cleaned = incoming
       .filter(t => t && typeof t.text === "string" && t.text.trim())
-      .map(t => ({
-        id: uid(),
-        text: String(t.text).trim(),
-        quadrant: ["q1","q2","q3","q4"].includes(t.quadrant) ? t.quadrant : null,
-        done: !!t.done,
-        scheduledTime: typeof t.scheduledTime === "string" ? t.scheduledTime : "",
-      }));
+      .map(t => normalizeTask({ ...t, id: null }));
     if (cleaned.length === 0) throw new Error("No tasks found in file");
 
     let mode = "append";
     if (state.tasks.length > 0) {
       const yes = confirm(
-        `Import ${cleaned.length} todo${cleaned.length !== 1 ? "s" : ""}?\n\n` +
-        `OK  = Append to your existing ${state.tasks.length} todo${state.tasks.length !== 1 ? "s" : ""}\n` +
+        `Import ${plural(cleaned.length, "todo")}?\n\n` +
+        `OK  = Append to your existing ${plural(state.tasks.length, "todo")}\n` +
         `Cancel = Replace all existing todos`
       );
       mode = yes ? "append" : "replace";
     }
     if (mode === "replace") {
       state.tasks = cleaned;
+      state.triageOrder = [];
     } else {
       state.tasks = state.tasks.concat(cleaned);
     }
     saveState(); render();
-    toast(`Imported ${cleaned.length} todo${cleaned.length !== 1 ? "s" : ""}`);
+    toast(`Imported ${plural(cleaned.length, "todo")}`);
   } catch (err) {
     toast("Couldn't import: " + (err.message || "invalid file"), "error");
   } finally {
@@ -1341,98 +2214,93 @@ async function handleFileImport(e) {
 function downloadFullSession() {
   const lines = [];
   const now = new Date();
-  lines.push("╔══════════════════════════════════════════════╗");
-  lines.push("║         SHARP AXE METHOD — SESSION           ║");
-  lines.push("╚══════════════════════════════════════════════╝");
+  const mark = t => (t.done ? "[x] " : "[ ] ");
+  lines.push("==============================================");
+  lines.push("           SHARP AXE METHOD: SESSION          ");
+  lines.push("==============================================");
   lines.push("");
   lines.push("Saved: " + now.toLocaleString());
   lines.push("");
 
-  // Checklists
   ["physical", "mental"].forEach(id => {
     const phase = PHASES.find(p => p.id === id);
     const items = state.checklistItems[id] || [];
-    lines.push("─── " + phase.title.toUpperCase() + " ───");
-    phase.items.forEach((label, i) => {
-      lines.push((items[i] ? "[x] " : "[ ] ") + label);
+    lines.push("--- " + phase.title.toUpperCase() + " ---");
+    phase.items.forEach((item, i) => {
+      lines.push((items[i] ? "[x] " : "[ ] ") + (typeof item === "string" ? item : item.text));
     });
     lines.push("");
   });
 
-  // Tasks by quadrant
-  lines.push("─── ALL TODOS ───");
+  lines.push("--- BRAIN DUMP ---");
+  lines.push((state.mentalDump || "").trim() || "(none)");
+  lines.push("");
+
+  lines.push("--- ALL TODOS ---");
   if (state.tasks.length === 0) {
     lines.push("(none captured)");
   } else {
-    state.tasks.forEach((t, i) => {
-      lines.push(`${i + 1}. ${t.done ? "[x]" : "[ ]"} ${t.text}`);
-    });
+    state.tasks.forEach((t, i) => lines.push(`${i + 1}. ${mark(t)}${t.text}`));
   }
   lines.push("");
 
-  lines.push("─── EISENHOWER MATRIX ───");
+  lines.push("--- SORTED ---");
   QUADRANTS.forEach(q => {
     const tasks = state.tasks.filter(t => t.quadrant === q.id);
-    lines.push(`\n  ${q.label.toUpperCase()} — ${q.sub}`);
-    if (tasks.length === 0) {
-      lines.push("    (none)");
-    } else {
-      tasks.forEach(t => lines.push(`    • ${t.done ? "[x] " : "[ ] "}${t.text}`));
-    }
+    lines.push(`\n  ${q.label.toUpperCase()} (${q.sub})`);
+    if (tasks.length === 0) lines.push("    (none)");
+    else tasks.forEach(t => lines.push(`    - ${mark(t)}${t.text}`));
   });
   const unassigned = state.tasks.filter(t => !t.quadrant);
   if (unassigned.length) {
-    lines.push("\n  UNASSIGNED");
-    unassigned.forEach(t => lines.push(`    • ${t.done ? "[x] " : "[ ] "}${t.text}`));
+    lines.push("\n  NOT SORTED");
+    unassigned.forEach(t => lines.push(`    - ${mark(t)}${t.text}`));
   }
   lines.push("");
 
-  // Schedule
-  lines.push("─── SCHEDULE ───");
-  const scheduled = prioritizedTasks();
+  lines.push("--- SCHEDULE ---");
+  const scheduled = schedulableTasks();
   if (scheduled.length === 0) {
     lines.push("(no scheduled tasks)");
   } else {
     scheduled.forEach((t, i) => {
-      const q = QUADRANTS.find(q => q.id === t.quadrant);
-      const time = t.scheduledTime ? ` @ ${t.scheduledTime}` : "";
+      const q = qInfo(t.quadrant);
+      const when = whenText(t);
       const tag  = q ? ` [${q.label}]` : "";
-      lines.push(`${i + 1}. ${t.done ? "[x]" : "[ ]"} ${t.text}${tag}${time}`);
+      lines.push(`${i + 1}. ${mark(t)}${t.text}${tag}${when ? ` @ ${when}` : ""} (${durLabel(t.duration || 30)})`);
+      (t.steps || []).forEach(s => lines.push(`      ${s.done ? "[x]" : "[ ]"} ${s.text}`));
     });
   }
   lines.push("");
 
-  lines.push("─── COMMUNICATE ───");
+  lines.push("--- COMMUNICATE ---");
   lines.push((state.scheduleNotes || "").trim() || "(none)");
   lines.push("");
 
-  // Execution stats
-  const total = state.tasks.length;
-  const done = state.tasks.filter(t => t.done).length;
-  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-  lines.push("─── EXECUTION ───");
-  lines.push(`Completed: ${done} / ${total} (${pct}%)`);
+  const active = state.tasks.filter(t => t.quadrant !== "q4");
+  const done = active.filter(t => t.done).length;
+  const pct = active.length > 0 ? Math.round((done / active.length) * 100) : 0;
+  lines.push("--- TRIAGE ---");
+  lines.push(`Completed: ${done} / ${active.length} (${pct}%)`);
   lines.push("");
 
-  // Reflection
-  lines.push("─── REFLECTION ───");
+  lines.push("--- REFLECTION ---");
   const refPhase = PHASES.find(p => p.id === "reflect");
   refPhase.questions.forEach(q => {
-    const a = state.reflectAnswers[q] || "(not answered)";
     lines.push(`Q: ${q}`);
-    lines.push(`A: ${a}`);
+    lines.push(`A: ${state.reflectAnswers[q] || "(not answered)"}`);
     lines.push("");
   });
 
-  lines.push("─── DIG DEEPER — YOUR NOTES ───");
+  lines.push("--- DIG DEEPER: YOUR NOTES ---");
   lines.push((state.reflectNotes || "").trim() || "(none)");
   lines.push("");
 
-  lines.push("═════════════════════════════════════════════════");
+  lines.push("==============================================");
   lines.push(`"The mind should not be kept continuously at the same`);
   lines.push(`pitch of concentration, but given amusing diversions.`);
   lines.push(`Our minds must relax. They will rise better, and`);
-  lines.push(`keener after a rest."  — Seneca the Younger`);
+  lines.push(`keener after a rest."  - Seneca the Younger`);
 
   downloadBlob(`sharp-axe-session_${timestamp()}.txt`, lines.join("\n"), "text/plain;charset=utf-8");
   toast("Session saved");
@@ -1459,7 +2327,10 @@ document.addEventListener("click", (e) => {
   if (!menuDropdown.contains(e.target) && e.target !== menuBtn) closeMenu();
 });
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") closeMenu();
+  if (e.key === "Escape") {
+    closeMenu();
+    if (_pickId) { _pickId = null; render(); }
+  }
 });
 
 $("#miImport").addEventListener("click", () => { closeMenu(); importTodos(); });
@@ -1468,9 +2339,9 @@ $("#miSaveAll").addEventListener("click", () => { closeMenu(); downloadFullSessi
 $("#fileInput").addEventListener("change", handleFileImport);
 
 /* ─── KICKOFF ───────────────────────────────────────────────── */
-render();
+render(true);
 window.addEventListener("beforeunload", saveState);
 </script>
 
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a02873b30e081b04',t:'MTc3OTkyMDg5OQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</body>
 </html>
