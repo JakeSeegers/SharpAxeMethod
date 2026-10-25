@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -34,6 +33,8 @@
     --q2:    #1c7ed6;
     --quick: #7048e8;
     --q4:    #868e96;
+    --amber:  #d9900b;
+    --bucket: #0c8599;
 
     --shadow: 0 1px 2px rgba(17, 24, 32, 0.05), 0 4px 14px rgba(17, 24, 32, 0.05);
     --head: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
@@ -64,6 +65,8 @@
       --q2:    #4dabf7;
       --quick: #9775fa;
       --q4:    #868e96;
+      --amber:  #fcc419;
+      --bucket: #3bc9db;
 
       --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 14px rgba(0, 0, 0, 0.25);
     }
@@ -113,6 +116,7 @@
   .pip:hover { background: var(--ink-faint); }
   .pip.done    { background: var(--steel); opacity: 0.55; }
   .pip.current { background: var(--accent); width: 24px; opacity: 1; }
+  .pips.on-home .pip.current { width: 8px; background: var(--steel); opacity: 0.55; }
 
   /* ─── MENU BUTTON + DROPDOWN ────────────────────────────────────── */
   .menu-wrap { position: relative; }
@@ -617,6 +621,87 @@
   .save-card-sub { font-size: 13px; color: var(--ink-mid); line-height: 1.4; }
   .save-card .btn { flex-shrink: 0; }
 
+  /* ─── BLOCKED TIME + BUCKETS ────────────────────────────────────── */
+  .block-list { display: flex; flex-direction: column; gap: 8px; }
+  .block-row {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 10px 12px;
+    background: var(--surface);
+    border: 1.5px solid var(--line); border-left: 4px solid var(--ink-faint);
+    border-radius: 9px;
+  }
+  .block-row.busy { background: repeating-linear-gradient(135deg, var(--surface) 0 8px, var(--surface-2) 8px 16px); }
+  .block-row.bucket { border-left-color: var(--bucket); }
+  .block-main { flex: 1; min-width: 180px; }
+  .block-name { font-size: 14.5px; font-weight: 700; color: var(--ink); }
+  .block-when { font-size: 13px; color: var(--ink-muted); }
+  .fill-meter { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-mid); margin-top: 4px; }
+  .fill-track { width: 70px; height: 6px; border-radius: 99px; background: var(--line); overflow: hidden; }
+  .fill-track div { height: 100%; background: var(--bucket); border-radius: 99px; }
+  .block-form {
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    margin-top: 10px; padding: 12px;
+    border: 1.5px dashed var(--line-strong); border-radius: 9px;
+  }
+  .block-form .seg { margin: 0; }
+  .block-form input[type="text"] { width: auto; flex: 1; min-width: 140px; padding: 7px 10px; font-size: 13px; }
+  .check-line { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-mid); cursor: pointer; }
+  .check-line input { accent-color: var(--accent); width: 15px; height: 15px; }
+  .clash { font-size: 12.5px; color: var(--ink-mid); padding: 8px 0 0 26px; }
+  .clash strong { color: var(--ink); }
+  .badge.bucket-tag { --c: var(--bucket); }
+
+  /* ─── GENTLE COUNTDOWNS ─────────────────────────────────────────── */
+  .badge.calm  { --c: var(--steel); }
+  .badge.soon  { --c: var(--amber); }
+  .badge.near  { --c: var(--accent); }
+  .badge.past  { --c: var(--ink-muted); }
+  .now-strip {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    margin-bottom: 14px; padding: 10px 14px;
+    background: var(--surface); border: 1.5px solid var(--line); border-left: 4px solid var(--c, var(--bucket));
+    border-radius: 9px; font-size: 14px; color: var(--ink-mid);
+  }
+  .now-strip strong { color: var(--ink); }
+  .time-passed {
+    margin-top: 16px; padding: 14px 16px;
+    background: var(--surface-2); border-radius: 10px;
+  }
+  .time-passed-title { font-weight: 700; color: var(--ink); margin-bottom: 2px; }
+  .time-passed .hint { margin-bottom: 10px; }
+
+  /* ─── HOME: MY TO-DOS ───────────────────────────────────────────── */
+  .brand { cursor: pointer; }
+  .home-input input[type="text"] { font-size: 17px; padding: 15px 17px; }
+  .home-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+  .home-bar .seg { margin: 0; }
+  .home-list { display: flex; flex-direction: column; gap: 8px; }
+  .home-row {
+    background: var(--surface);
+    border: 1.5px solid var(--line);
+    border-left: 4px solid var(--c, var(--line));
+    border-radius: 10px;
+  }
+  .home-row.open { box-shadow: var(--shadow); }
+  .home-row-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 11px 12px; }
+  .home-row-top .check-circle { cursor: pointer; width: 22px; height: 22px; border-radius: 6px; }
+  .home-row-top .check-circle:hover { border-color: var(--good); }
+  .home-row-top .up-text { min-width: 140px; }
+  .home-editor {
+    display: flex; flex-direction: column; gap: 12px;
+    padding: 4px 14px 14px 44px;
+  }
+  .home-editor .seg { margin: 0; flex-wrap: wrap; }
+  .home-editor .controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .session-card {
+    margin-top: 28px; padding: 18px 20px;
+    background: var(--steel-soft); border-radius: 11px;
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  }
+  .session-card-body { flex: 1; min-width: 200px; }
+  .session-card-title { font-family: var(--head); font-size: 18px; font-weight: 800; color: var(--ink); }
+  .session-card-sub { font-size: 13px; color: var(--ink-mid); }
+
   /* ─── TIP CALLOUT ───────────────────────────────────────────────── */
   .tip {
     margin-top: 28px; padding: 14px 18px;
@@ -683,6 +768,8 @@
     .breath { flex-direction: column; text-align: center; gap: 16px; }
     .schedule-controls { padding-left: 0; }
     .gcal-btn { margin-left: 0; }
+    .clash { padding-left: 0; }
+    .home-editor { padding-left: 14px; }
     .focus-card { padding: 18px; }
     .focus-text { font-size: 22px; }
     .timer { width: 100%; }
@@ -692,7 +779,7 @@
 <body>
 
 <header class="topbar">
-  <div class="brand">
+  <div class="brand" id="brand" role="button" tabindex="0" title="My to-dos">
     <span class="brand-mark">
       <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="M14 12L5 21"/>
@@ -748,6 +835,24 @@
             <span class="menu-item-sub">Download everything as .txt</span>
           </span>
         </button>
+        <div class="menu-divider"></div>
+        <button class="menu-item" id="miDrive" role="menuitem">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M8 3h8l6 10-4 7H6l-4-7z"/>
+            <path d="M8 3l6 10h8"/>
+            <path d="M2 13h12l-4 7"/>
+          </svg>
+          <span>
+            <span id="driveTitle">Google Drive</span>
+            <span class="menu-item-sub" id="driveSub">Save your data to Drive</span>
+          </span>
+        </button>
+        <button class="menu-item" id="miDriveOff" role="menuitem" hidden>
+          <span style="padding-left: 30px">
+            Disconnect Google Drive
+            <span class="menu-item-sub">Your Drive file stays</span>
+          </span>
+        </button>
       </div>
     </div>
     <input type="file" id="fileInput" accept=".json,application/json" style="display:none" />
@@ -785,6 +890,9 @@
    ============================================================ */
 
 const STORAGE_KEY = "sharp-axe-state-v2";
+// Optional: paste your Google OAuth Client ID here (it is not a secret).
+// If it is empty, the app asks for it the first time. See GOOGLE-SETUP.md.
+const GOOGLE_CLIENT_ID = "";
 const OLD_STORAGE_KEY = "sharp-axe-state-v1";
 
 /* ─── PHASE DEFINITIONS ─────────────────────────────────────── */
@@ -890,8 +998,10 @@ const defaultState = () => ({
   tasks: [],
   scheduleNotes: "",
   triageOrder: [],
+  blocks: [],
   reflectAnswers: {},
   reflectNotes: "",
+  savedAt: 0,
 });
 
 let state = loadState();
@@ -905,10 +1015,40 @@ function normalizeTask(t) {
     scheduledTime: typeof t.scheduledTime === "string" ? t.scheduledTime : "",
     date: typeof t.date === "string" ? t.date : "",
     duration: Number(t.duration) || 30,
+    bucket: typeof t.bucket === "string" ? t.bucket.trim() : "",
     steps: Array.isArray(t.steps)
       ? t.steps.filter(s => s && typeof s.text === "string").map(s => ({ id: s.id || uid(), text: s.text, done: !!s.done }))
       : [],
   };
+}
+
+function normalizeBlock(b) {
+  return {
+    id: b.id || uid(),
+    kind: b.kind === "bucket" ? "bucket" : "busy",
+    name: String(b.name || "").trim(),
+    date: typeof b.date === "string" ? b.date : "",
+    start: typeof b.start === "string" ? b.start : "",
+    end: typeof b.end === "string" ? b.end : "",
+    weekly: !!b.weekly,
+  };
+}
+
+function hydrate(parsed, fromV1 = false) {
+  const d = defaultState();
+  const s = {
+    ...d, ...parsed,
+    checklistItems: { ...d.checklistItems, ...(parsed.checklistItems || {}) },
+    tasks: (parsed.tasks || []).map(normalizeTask),
+    triageOrder: Array.isArray(parsed.triageOrder) ? parsed.triageOrder : [],
+    blocks: (parsed.blocks || []).map(normalizeBlock),
+  };
+  if (fromV1) {
+    // v1 had 7 phases: "Just Do It" (5) and "Reflect" (6) moved one step later.
+    s.phase = parsed.phase >= 5 ? parsed.phase + 1 : (parsed.phase || 0);
+  }
+  s.phase = Math.max(0, Math.min(PHASES.length - 1, Number(s.phase) || 0));
+  return s;
 }
 
 function loadState() {
@@ -917,23 +1057,18 @@ function loadState() {
     let fromV1 = false;
     if (!raw) { raw = localStorage.getItem(OLD_STORAGE_KEY); fromV1 = !!raw; }
     if (!raw) return defaultState();
-    const parsed = JSON.parse(raw);
-    const d = defaultState();
-    const s = {
-      ...d, ...parsed,
-      checklistItems: { ...d.checklistItems, ...(parsed.checklistItems || {}) },
-      tasks: (parsed.tasks || []).map(normalizeTask),
-      triageOrder: Array.isArray(parsed.triageOrder) ? parsed.triageOrder : [],
-    };
-    if (fromV1) {
-      // v1 had 7 phases: "Just Do It" (5) and "Reflect" (6) moved one step later.
-      s.phase = parsed.phase >= 5 ? parsed.phase + 1 : (parsed.phase || 0);
-    }
-    s.phase = Math.max(0, Math.min(PHASES.length - 1, Number(s.phase) || 0));
-    return s;
+    return hydrate(JSON.parse(raw), fromV1);
   } catch { return defaultState(); }
 }
+
+// savedAt only moves when something really changed, so Drive can tell
+// which copy is newer.
+let _savedSig = null;
+function stateSig() { const { savedAt, ...rest } = state; return JSON.stringify(rest); }
 function saveState() {
+  const sig = stateSig();
+  if (_savedSig !== null && sig !== _savedSig) { state.savedAt = Date.now(); driveAutoSave(); }
+  _savedSig = sig;
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
 }
 
@@ -983,6 +1118,7 @@ const SVG = {
   copy:  `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`,
   dice:  `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1" fill="currentColor"/><circle cx="15.5" cy="15.5" r="1" fill="currentColor"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg>`,
   refresh: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23,4 23,10 17,10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>`,
+  edit: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>`,
   save: `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17,21 17,13 7,13 7,21"/><polyline points="7,3 7,8 15,8"/></svg>`,
 };
 
@@ -1008,6 +1144,165 @@ function whenText(task) {
   if (task.scheduledTime) parts.push(task.scheduledTime);
   return parts.join(" @ ");
 }
+
+/* ─── TIME HELPERS ──────────────────────────────────────────── */
+const at = (dateISO, time) => new Date(`${dateISO}T${time || "00:00"}`);
+function isoOf(d) {
+  const pad = n => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+function hm(d) { return d.toTimeString().slice(0, 5); }
+function addDays(d, n) { const x = new Date(d); x.setDate(x.getDate() + n); return x; }
+function minutesText(min) {
+  min = Math.max(0, Math.round(min));
+  if (min < 60) return `${min} min`;
+  const h = Math.floor(min / 60), m = min % 60;
+  return m ? `${h} hr ${m} min` : `${h} hr${h > 1 ? "s" : ""}`;
+}
+
+// When a task starts. No date means today; no time means no countdown.
+function taskStart(task) {
+  return task.scheduledTime ? at(task.date || todayISO(), task.scheduledTime) : null;
+}
+function taskEnd(task) {
+  const s = taskStart(task);
+  return s ? new Date(s.getTime() + (task.duration || 30) * 60000) : null;
+}
+
+/* ─── BLOCKED TIME + BUCKETS ────────────────────────────────── */
+function blockOccursOn(b, dateISO) {
+  if (!b.date || !b.start || !b.end) return false;
+  if (!b.weekly) return b.date === dateISO;
+  return dateISO >= b.date && at(dateISO).getDay() === at(b.date).getDay();
+}
+function blockRange(b, dateISO) {
+  const s = at(dateISO, b.start), e = at(dateISO, b.end);
+  if (e <= s) e.setDate(e.getDate() + 1); // for example 22:00 to 06:00
+  return [s, e];
+}
+// The current or next time this block happens (within a week).
+function nextOccurrence(b, from = new Date()) {
+  for (let i = -1; i <= 7; i++) {
+    const d = isoOf(addDays(from, i));
+    if (!blockOccursOn(b, d)) continue;
+    const r = blockRange(b, d);
+    if (r[1] > from) return r;
+  }
+  return null;
+}
+function blockWhen(b) {
+  const r = nextOccurrence(b) || (b.date ? blockRange(b, b.date) : null);
+  if (!r) return "";
+  const day = r[0].toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+  return `${b.weekly ? `Every ${r[0].toLocaleDateString(undefined, { weekday: "long" })} · next ${day}` : day} · ${b.start}–${b.end}`;
+}
+const sameBucket = (a, b) => a && b && a.toLowerCase() === b.toLowerCase();
+function bucketNames() {
+  const names = new Map();
+  state.blocks.filter(b => b.kind === "bucket" && b.name).forEach(b => names.set(b.name.toLowerCase(), b.name));
+  state.tasks.filter(t => t.bucket).forEach(t => { if (!names.has(t.bucket.toLowerCase())) names.set(t.bucket.toLowerCase(), t.bucket); });
+  return [...names.values()];
+}
+// Tasks that sit inside one occurrence of a block.
+function tasksIn(range) {
+  return state.tasks.filter(t => {
+    const s = taskStart(t);
+    return s && !t.done && t.quadrant !== "q4" && s >= range[0] && s < range[1];
+  });
+}
+// A blocked-off time that a task's slot runs into, if any.
+function clashFor(task) {
+  const s = taskStart(task), e = taskEnd(task);
+  if (!s) return null;
+  for (const b of state.blocks) {
+    if (b.kind !== "busy") continue;
+    for (const d of [isoOf(addDays(s, -1)), isoOf(s)]) {
+      if (!blockOccursOn(b, d)) continue;
+      const [bs, be] = blockRange(b, d);
+      if (s < be && e > bs) return b;
+    }
+  }
+  return null;
+}
+
+// Put tasks from this bucket into the next free gaps of the block.
+function fillBucket(b) {
+  const range = nextOccurrence(b);
+  if (!range) { toast("This block is already over", "error"); return; }
+  const now = new Date();
+  const taken = [];
+  state.tasks.forEach(t => {
+    const s = taskStart(t);
+    if (s && !t.done) taken.push([s, taskEnd(t)]);
+  });
+  state.blocks.filter(x => x.kind === "busy").forEach(x => {
+    for (const d of [isoOf(addDays(range[0], -1)), isoOf(range[0])]) if (blockOccursOn(x, d)) taken.push(blockRange(x, d));
+  });
+  taken.sort((p, q) => p[0] - q[0]);
+  const step = 15 * 60000;
+  const startFrom = new Date(Math.max(range[0], Math.ceil(now / step) * step));
+  const todo = schedulableTasks().filter(t => !t.done && !t.scheduledTime && sameBucket(t.bucket, b.name));
+  if (!todo.length) { toast(`No unplanned ${b.name} tasks. Tag a task with #${b.name.toLowerCase().replace(/\s+/g, "")} first.`, "error"); return; }
+  let placed = 0;
+  for (const t of todo) {
+    const len = (t.duration || 30) * 60000;
+    let cur = startFrom;
+    for (const [ts, te] of taken) {
+      if (te <= cur) continue;
+      if (ts - cur >= len) break;
+      if (te > cur) cur = te;
+    }
+    if (range[1] - cur < len) continue;
+    t.date = isoOf(cur); t.scheduledTime = hm(cur);
+    taken.push([cur, new Date(cur.getTime() + len)]);
+    taken.sort((p, q) => p[0] - q[0]);
+    placed++;
+  }
+  saveState(); render();
+  const left = todo.length - placed;
+  toast(placed
+    ? `Put ${plural(placed, "task")} in ${b.name} time.${left ? ` ${left} did not fit. That's okay.` : ""}`
+    : "Nothing fit in this block. Try a shorter length or a longer block.");
+}
+
+/* ─── GENTLE COUNTDOWNS ─────────────────────────────────────── */
+// Calm colours that warm up as a time gets close. Never an alarm.
+function softTime(task, now = Date.now()) {
+  const s = taskStart(task);
+  if (!s) return null;
+  const until = s - now;
+  if (until > 0) {
+    const cls = until <= 15 * 60000 ? "near" : until <= 60 * 60000 ? "soon" : "calm";
+    const txt = until < 60000 ? "Starts now" : until > 36 * 3600000 ? `Starts ${whenText(task)}` : `Starts in ${minutesText(until / 60000)}`;
+    return { cls, txt, passed: false };
+  }
+  if (taskEnd(task) > now) return { cls: "near", txt: `Happening now · ${minutesText((taskEnd(task) - now) / 60000)} left`, passed: false };
+  return { cls: "past", txt: "Time passed", passed: true };
+}
+function timeBadge(task) {
+  const t = softTime(task);
+  return t ? el("span", { class: `badge ${t.cls}`, "data-countdown": String(task.id), text: t.txt }) : null;
+}
+function updateCountdowns() {
+  document.querySelectorAll("[data-countdown]").forEach(n => {
+    const task = state.tasks.find(t => String(t.id) === n.dataset.countdown);
+    const t = task && softTime(task);
+    if (!t) return;
+    n.textContent = t.txt;
+    n.className = `badge ${t.cls}`;
+  });
+  document.querySelectorAll("[data-left]").forEach(n => {
+    n.textContent = minutesText((Number(n.dataset.left) - Date.now()) / 60000);
+  });
+}
+
+const KIND_LINES = [
+  "Plans are guesses. Notice the thought \"I'm behind\", and choose the next step anyway.",
+  "Missing a time says something about the plan, not about you.",
+  "Talk to yourself the way you would talk to a good friend right now.",
+  "You can feel uneasy and still take one small step.",
+];
+const kindLine = () => KIND_LINES[Math.floor(Date.now() / 86400000) % KIND_LINES.length];
 
 /* ─── TOAST ─────────────────────────────────────────────────── */
 let _toastTimer = null;
@@ -1071,9 +1366,16 @@ function tipBlock(text) {
 
 /* ─── SHARED: ADD-TASK INPUT ────────────────────────────────── */
 function addTask(text, quadrant = null) {
-  const clean = String(text || "").trim();
+  let clean = String(text || "").trim();
+  // "#friends" puts the task in a bucket (matches an existing bucket name if there is one).
+  let bucket = "";
+  clean = clean.replace(/(^|\s)#([\p{L}\p{N}_-]+)/u, (m, sp, tag) => {
+    bucket = bucketNames().find(n => n.toLowerCase().replace(/\s+/g, "") === tag.toLowerCase())
+          || tag.charAt(0).toUpperCase() + tag.slice(1);
+    return " ";
+  }).replace(/\s+/g, " ").trim();
   if (!clean) return null;
-  const task = normalizeTask({ text: clean, quadrant });
+  const task = normalizeTask({ text: clean, quadrant, bucket });
   state.tasks.push(task);
   return task;
 }
@@ -1283,6 +1585,7 @@ function taskRow(task, i) {
       "aria-label": "Task",
       oninput: (e) => { task.text = e.target.value; saveState(); },
     }),
+    task.bucket ? el("span", { class: "badge bucket-tag", text: task.bucket }) : null,
     el("button", {
       class: `icon-btn ${isQuick ? "on" : ""}`,
       type: "button",
@@ -1323,6 +1626,7 @@ function renderListPhase(p) {
     _addCategory === "quick" ? "A small thing (under 3 minutes)..." : "Write a task and press Enter...",
     (text) => addTask(text, _addCategory === "quick" ? "quick" : null),
   ));
+  wrap.appendChild(el("div", { class: "hint", style: { marginTop: "-8px" }, text: "Tip: add a tag like #friends to put a task in a bucket." }));
 
   const regular = state.tasks.filter(t => t.quadrant !== "quick");
   const quick = state.tasks.filter(t => t.quadrant === "quick");
@@ -1495,6 +1799,7 @@ function gcalUrl(task) {
   const details = ["Planned with the Sharp Axe Method."];
   if (task.steps?.length) details.push("", "Steps:", ...task.steps.map(s => `- ${s.text}`));
   const params = new URLSearchParams({ action: "TEMPLATE", text: task.text, dates, details: details.join("\n") });
+  if (task.weekly) params.set("recur", "RRULE:FREQ=WEEKLY");
   try { params.set("ctz", Intl.DateTimeFormat().resolvedOptions().timeZone); } catch {}
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
@@ -1513,6 +1818,7 @@ function renderSchedule(p) {
     ]));
   });
   wrap.appendChild(el("div", {}, [el("span", { class: "section-label", text: "Quick rules" }), rules]));
+  wrap.appendChild(blocksSection());
 
   const tasks = schedulableTasks();
   const tWrap = el("div", { class: "section" }, [
@@ -1553,8 +1859,10 @@ function renderSchedule(p) {
           oninput: (e) => { task.scheduledTime = e.target.value; refresh(); },
         }),
         durSel,
+        bucketSelect(task),
         gcal,
       ]),
+      clashNote(task),
     ]));
   });
   if (tasks.length) {
@@ -1567,6 +1875,89 @@ function renderSchedule(p) {
     wrap.appendChild(el("div", { class: "note-line", text: `${plural(quickCount, "under-3-minute task")} not listed here. You will do those in Triage.` }));
   }
   return wrap;
+}
+
+function bucketSelect(task) {
+  const names = bucketNames();
+  if (!names.length) return null;
+  const sel = el("select", {
+    "aria-label": "Bucket",
+    onchange: (e) => { task.bucket = e.target.value; saveState(); },
+  }, [el("option", { value: "", text: "No bucket" }), ...names.map(n => el("option", { value: n, text: n }))]);
+  sel.value = names.find(n => sameBucket(n, task.bucket)) || "";
+  return sel;
+}
+
+function clashNote(task) {
+  const b = clashFor(task);
+  return b ? el("div", { class: "clash" }, [
+    "This runs into ", el("strong", { text: b.name || "blocked-off time" }), ` (${b.start}–${b.end}). Pick another time?`,
+  ]) : null;
+}
+
+let _blockKind = "busy";
+function blocksSection() {
+  const sec = el("div", { class: "section" }, [
+    el("span", { class: "section-label", text: "Blocked-off time & buckets" }),
+    el("div", { class: "hint", text: "Blocked off: times you cannot use. Bucket: time you keep for one kind of to-do, like Friends. Tag tasks with #friends, then press Fill." }),
+  ]);
+  const list = el("div", { class: "block-list" });
+  state.blocks.forEach(b => {
+    const isBucket = b.kind === "bucket";
+    const range = nextOccurrence(b);
+    let meter = null;
+    if (isBucket && range) {
+      const cap = (range[1] - range[0]) / 60000;
+      const used = tasksIn(range).filter(t => sameBucket(t.bucket, b.name)).reduce((n, t) => n + (t.duration || 30), 0);
+      meter = el("div", { class: "fill-meter" }, [
+        el("div", { class: "fill-track" }, [el("div", { style: { width: `${Math.min(100, used / cap * 100)}%` } })]),
+        el("span", { text: `${minutesText(used)} of ${minutesText(cap)} planned` }),
+      ]);
+    }
+    list.appendChild(el("div", { class: `block-row ${b.kind}` }, [
+      el("div", { class: "block-main" }, [
+        el("div", { class: "block-name", text: b.name || (isBucket ? "Bucket" : "Blocked off") }),
+        el("div", { class: "block-when", text: blockWhen(b) }),
+        meter,
+      ]),
+      isBucket && range ? el("button", { class: "btn btn-sm", type: "button", text: "Fill", title: `Put #${b.name} tasks into this time`, onclick: () => fillBucket(b) }) : null,
+      range ? el("a", {
+        class: "icon-btn", href: gcalUrl({ text: b.name || "Blocked off", date: isoOf(range[0]), scheduledTime: b.start, duration: (range[1] - range[0]) / 60000, weekly: b.weekly }),
+        target: "_blank", rel: "noopener", title: "Add to Google Calendar", "aria-label": "Add to Google Calendar", html: SVG.cal,
+      }) : null,
+      el("button", {
+        class: "icon-btn danger", type: "button", "aria-label": "Remove", html: SVG.trash,
+        onclick: () => { state.blocks = state.blocks.filter(x => x.id !== b.id); saveState(); render(); },
+      }),
+    ]));
+  });
+  if (state.blocks.length) sec.appendChild(list);
+
+  // Add form
+  const nameIn = el("input", { type: "text", list: "bucketNames", placeholder: _blockKind === "bucket" ? "Bucket name, e.g. Friends" : "What is it? e.g. Work shift" });
+  const dateIn = el("input", { type: "date", "aria-label": "Date", value: todayISO() });
+  const startIn = el("input", { type: "time", "aria-label": "From", value: "09:00" });
+  const endIn = el("input", { type: "time", "aria-label": "To", value: "12:00" });
+  const weeklyIn = el("input", { type: "checkbox" });
+  const add = () => {
+    if (!dateIn.value || !startIn.value || !endIn.value) { toast("Pick a date and times", "error"); return; }
+    const name = nameIn.value.trim();
+    if (_blockKind === "bucket" && !name) { toast("Give the bucket a name", "error"); nameIn.focus(); return; }
+    state.blocks.push(normalizeBlock({ kind: _blockKind, name, date: dateIn.value, start: startIn.value, end: endIn.value, weekly: weeklyIn.checked }));
+    saveState(); render();
+  };
+  nameIn.addEventListener("keydown", (e) => { if (e.key === "Enter") add(); });
+  sec.appendChild(el("div", { class: "block-form" }, [
+    el("div", { class: "seg" }, [
+      el("button", { type: "button", class: _blockKind === "busy" ? "active" : "", text: "Blocked off", onclick: () => { _blockKind = "busy"; render(); } }),
+      el("button", { type: "button", class: _blockKind === "bucket" ? "active" : "", text: "Bucket", onclick: () => { _blockKind = "bucket"; render(); } }),
+    ]),
+    nameIn, dateIn, startIn, el("span", { class: "hint", style: { margin: 0 }, text: "to" }), endIn,
+    el("label", { class: "check-line" }, [weeklyIn, "Every week"]),
+    el("button", { class: "btn btn-sm btn-dark", type: "button", text: "Add", onclick: add }),
+    el("datalist", { id: "bucketNames" }, bucketNames().map(n => el("option", { value: n }))),
+  ]));
+  return sec;
 }
 
 /* ─── PHASE: COMMUNICATE ────────────────────────────────────── */
@@ -1813,6 +2204,8 @@ function renderTriage(p) {
   ]));
 
   const list = triageList();
+  const strip = nowStrip();
+  if (strip) wrap.appendChild(strip);
 
   if (total === 0) {
     wrap.appendChild(el("div", { class: "empty", text: "No tasks yet. Add one below, or go back to List Your To-Dos." }));
@@ -1825,7 +2218,10 @@ function renderTriage(p) {
     const task = list[0];
     const meta = el("div", { class: "focus-meta" }, [badgeFor(task)]);
     const when = whenText(task);
-    if (when) meta.appendChild(el("span", { class: "badge", text: when }));
+    const soft = timeBadge(task);
+    if (soft) meta.appendChild(soft);
+    else if (when) meta.appendChild(el("span", { class: "badge", text: when }));
+    if (task.bucket) meta.appendChild(el("span", { class: "badge bucket-tag", text: task.bucket }));
     if (task.steps?.length) meta.appendChild(el("span", { class: "badge", text: `${task.steps.filter(s => s.done).length}/${task.steps.length} steps` }));
 
     const doneBtn = el("button", {
@@ -1855,6 +2251,7 @@ function renderTriage(p) {
           onclick: () => { moveInOrder(task.id, Infinity); toast("Moved to the end. That's okay."); },
         }) : null,
       ]),
+      softTime(task)?.passed ? timePassedPanel(task) : null,
     ]));
 
     // Stuck helpers
@@ -1905,6 +2302,7 @@ function renderTriage(p) {
             onkeydown: (e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); completeTask(t, e.currentTarget); } },
           }),
           el("span", { class: "up-text", text: t.text }),
+          timeBadge(t),
           badgeFor(t),
           el("div", { class: "up-tools" }, [
             el("button", { class: "icon-btn", type: "button", title: "Do this now", "aria-label": "Do this now", html: SVG.top, onclick: () => moveInOrder(t.id, 0) }),
@@ -1961,6 +2359,61 @@ function renderTriage(p) {
     wrap.appendChild(el("div", { class: "note-line", text: `${plural(dropped, "task")} in Eliminate. You chose to let ${dropped === 1 ? "it" : "them"} go.` }));
   }
   return wrap;
+}
+
+// What block are you in right now, or which one starts soon?
+function nowStrip() {
+  const now = new Date();
+  let cur = null, next = null;
+  for (const b of state.blocks) {
+    const r = nextOccurrence(b, now);
+    if (!r) continue;
+    if (r[0] <= now) { if (!cur || b.kind === "bucket") cur = { b, r }; }
+    else if (r[0] - now <= 60 * 60000 && (!next || r[0] < next.r[0])) next = { b, r };
+  }
+  if (cur) {
+    const isBucket = cur.b.kind === "bucket";
+    const name = cur.b.name || (isBucket ? "Bucket" : "Blocked-off");
+    return el("div", { class: "now-strip", style: { "--c": isBucket ? "var(--bucket)" : "var(--ink-faint)" } }, [
+      el("strong", { text: isBucket ? `${name} time` : `${name} (blocked off)` }),
+      el("span", {}, [el("span", { "data-left": String(cur.r[1].getTime()), text: minutesText((cur.r[1] - now) / 60000) }), " left"]),
+      isBucket ? el("span", { text: `· ${plural(tasksIn(cur.r).filter(t => sameBucket(t.bucket, cur.b.name)).length, "task")} planned` }) : null,
+    ]);
+  }
+  if (next) {
+    return el("div", { class: "now-strip", style: { "--c": "var(--amber)" } }, [
+      el("strong", { text: next.b.kind === "bucket" ? `${next.b.name} time` : (next.b.name || "Blocked-off time") }),
+      el("span", { text: `starts at ${next.b.start}` }),
+    ]);
+  }
+  return null;
+}
+
+// ACT-style: no "overdue". Notice it, then choose what to do.
+let _newTimeFor = null;
+function timePassedPanel(task) {
+  const panel = el("div", { class: "time-passed" }, [
+    el("div", { class: "time-passed-title", text: "The planned time has passed. That's okay." }),
+    el("div", { class: "hint", text: kindLine() }),
+  ]);
+  if (_newTimeFor === task.id) {
+    panel.appendChild(el("div", { class: "row-actions" }, [
+      el("input", { type: "date", "aria-label": "New date", value: task.date || todayISO(), onchange: (e) => { task.date = e.target.value; saveState(); } }),
+      el("input", { type: "time", "aria-label": "New time", value: "", onchange: (e) => { task.scheduledTime = e.target.value; _newTimeFor = null; saveState(); render(); toast("New time set."); } }),
+      el("button", { class: "btn btn-sm btn-ghost", type: "button", text: "Cancel", onclick: () => { _newTimeFor = null; render(); } }),
+    ]));
+  } else {
+    panel.appendChild(el("div", { class: "row-actions" }, [
+      el("button", { class: "btn btn-sm btn-dark", type: "button", text: "Do it now anyway", onclick: () => {
+        const n = new Date(); task.date = isoOf(n); task.scheduledTime = hm(n); saveState(); render();
+      } }),
+      el("button", { class: "btn btn-sm", type: "button", text: "Pick a new time", onclick: () => { _newTimeFor = task.id; render(); } }),
+      el("button", { class: "btn btn-sm btn-ghost", type: "button", text: "Let it go", onclick: () => {
+        task.quadrant = "q4"; saveState(); render(); toast("Let go on purpose. That is a choice, not a failure.");
+      } }),
+    ]));
+  }
+  return panel;
 }
 
 /* ─── PHASE: REFLECT ────────────────────────────────────────── */
@@ -2031,6 +2484,173 @@ function renderReflect(p) {
   return wrap;
 }
 
+/* ─── HOME: MY TO-DOS ───────────────────────────────────────── */
+// The front page: add a to-do, see what matters most and what is soonest.
+let _view = "home";          // "home" or "steps"
+let _homeSort = "importance"; // or "soonest"
+let _openFor = null;
+let _homeShowDone = false;
+
+const IMPORTANCE_RANK = { q1: 0, quick: 1, q2: 2 }; // not sorted = 3, Eliminate = 4
+const importanceRank = t => t.quadrant === "q4" ? 4 : (IMPORTANCE_RANK[t.quadrant] ?? 3);
+function dueMs(t) {
+  const s = taskStart(t);
+  if (s) return s.getTime();
+  return t.date ? at(t.date, "23:59").getTime() : Infinity;
+}
+const cmp = (x, y) => x < y ? -1 : x > y ? 1 : 0;
+function homeCompare(a, b) {
+  const imp = cmp(importanceRank(a), importanceRank(b));
+  const urg = cmp(dueMs(a), dueMs(b));
+  return (_homeSort === "soonest" ? (urg || imp) : (imp || urg)) || state.tasks.indexOf(a) - state.tasks.indexOf(b);
+}
+
+function homeEditor(t) {
+  const textIn = el("input", { type: "text", value: t.text, "aria-label": "Task", oninput: (e) => { t.text = e.target.value; saveState(); } });
+  const durSel = el("select", { "aria-label": "How long", onchange: (e) => { t.duration = Number(e.target.value); saveState(); } },
+    DURATIONS.map(m => el("option", { value: String(m), text: durLabel(m) })));
+  durSel.value = String(t.duration || 30);
+  return el("div", { class: "home-editor" }, [
+    textIn,
+    el("div", {}, [
+      el("span", { class: "section-label", text: "How important?" }),
+      el("div", { class: "seg" }, [
+        ...QUADRANTS.map(q => el("button", {
+          type: "button", class: t.quadrant === q.id ? "active" : "", text: q.label, title: q.sub,
+          onclick: () => { t.quadrant = q.id; saveState(); render(); },
+        })),
+        el("button", { type: "button", class: t.quadrant ? "" : "active", text: "Not sure", onclick: () => { t.quadrant = null; saveState(); render(); } }),
+      ]),
+    ]),
+    el("div", {}, [
+      el("span", { class: "section-label", text: "When?" }),
+      el("div", { class: "controls" }, [
+        el("input", { type: "date", "aria-label": "Date", value: t.date || "", onchange: (e) => { t.date = e.target.value; saveState(); render(); } }),
+        el("input", { type: "time", "aria-label": "Start time", value: t.scheduledTime || "", onchange: (e) => { t.scheduledTime = e.target.value; saveState(); render(); } }),
+        durSel,
+        bucketSelect(t),
+      ]),
+      clashNote(t),
+    ]),
+    stepsBlock(t),
+    el("div", { class: "controls" }, [
+      el("button", { class: "btn btn-sm btn-dark", type: "button", text: "Close", onclick: () => { _openFor = null; render(); } }),
+      el("button", { class: "btn btn-sm btn-ghost", type: "button", html: `${SVG.trash}<span>Delete</span>`, onclick: () => {
+        state.tasks = state.tasks.filter(x => x.id !== t.id); _openFor = null; saveState(); render();
+      } }),
+    ]),
+  ]);
+}
+
+function homeRow(t) {
+  const open = _openFor === t.id;
+  const q = qInfo(t.quadrant);
+  const stepsLeft = (t.steps || []).filter(s => !s.done).length;
+  return el("div", { class: `home-row ${open ? "open" : ""}`, style: { "--c": q ? q.color : "var(--line)" } }, [
+    el("div", { class: "home-row-top" }, [
+      el("span", {
+        class: "check-circle", role: "checkbox", "aria-checked": "false", tabindex: "0", title: "Mark done",
+        onclick: (e) => completeTask(t, e.currentTarget),
+        onkeydown: (e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); completeTask(t, e.currentTarget); } },
+      }),
+      el("span", { class: "up-text", text: t.text }),
+      timeBadge(t) || (t.date ? el("span", { class: "badge", text: whenText(t) }) : null),
+      t.bucket ? el("span", { class: "badge bucket-tag", text: t.bucket }) : null,
+      t.steps?.length ? el("span", { class: "badge", text: stepsLeft ? `${plural(stepsLeft, "step")} left` : "Steps done" }) : null,
+      q ? badgeFor(t) : null,
+      el("button", {
+        class: "icon-btn", type: "button", html: SVG.edit,
+        title: "Edit: importance, time, tiny steps", "aria-label": "Edit", "aria-expanded": String(open),
+        onclick: () => { _openFor = open ? null : t.id; _stepsOpenFor = _openFor; render(); },
+      }),
+    ]),
+    open ? homeEditor(t) : null,
+  ]);
+}
+
+function renderHome() {
+  const wrap = el("div", {}, [
+    el("div", { class: "phase-header" }, [
+      el("h1", { class: "phase-title", text: "My to-dos" }),
+      el("p", { class: "phase-sub", text: "Add anything. The most important and most urgent things come first." }),
+    ]),
+  ]);
+  const input = taskInput("home-input", "Add a to-do... (add #friends to put it in a bucket)", (text) => addTask(text));
+  input.classList.add("home-input");
+  wrap.appendChild(input);
+
+  const open = state.tasks.filter(t => !t.done && t.quadrant !== "q4").sort(homeCompare);
+  wrap.appendChild(el("div", { class: "home-bar" }, [
+    el("div", { class: "seg", role: "tablist", "aria-label": "Sort" }, [
+      el("button", { type: "button", class: _homeSort === "importance" ? "active" : "", text: "Most important", onclick: () => { _homeSort = "importance"; render(); } }),
+      el("button", { type: "button", class: _homeSort === "soonest" ? "active" : "", text: "Soonest", onclick: () => { _homeSort = "soonest"; render(); } }),
+    ]),
+    el("span", { class: "hint", style: { margin: 0 }, text: plural(open.length, "to-do") }),
+  ]));
+
+  const strip = nowStrip();
+  if (strip) wrap.appendChild(strip);
+
+  if (!open.length) {
+    wrap.appendChild(el("div", { class: "empty", text: state.tasks.length ? "Nothing open. Enjoy it." : "Nothing here yet. Add your first to-do above." }));
+  } else {
+    const list = el("div", { class: "home-list" });
+    open.forEach(t => list.appendChild(homeRow(t)));
+    wrap.appendChild(list);
+  }
+
+  const doneOrGone = state.tasks.filter(t => t.done || t.quadrant === "q4");
+  if (doneOrGone.length) {
+    const sec = el("div", { class: "section" }, [
+      el("button", { class: "btn btn-sm btn-ghost", type: "button",
+        text: `${_homeShowDone ? "Hide" : "Show"} done and let go (${doneOrGone.length})`,
+        onclick: () => { _homeShowDone = !_homeShowDone; render(); } }),
+    ]);
+    if (_homeShowDone) {
+      const dl = el("div", { class: "task-list", style: { marginTop: "8px" } });
+      doneOrGone.forEach(t => dl.appendChild(el("div", { class: "up-row done" }, [
+        el("span", {
+          class: "check-circle", role: "checkbox", "aria-checked": String(t.done), tabindex: "0",
+          title: t.done ? "Not done after all" : "Bring back", html: t.done ? SVG.check : "",
+          onclick: () => { if (t.done) t.done = false; else t.quadrant = null; saveState(); render(); },
+        }),
+        el("span", { class: "up-text", text: t.text }),
+        t.done ? null : el("span", { class: "badge", text: "Let go" }),
+      ])));
+      sec.appendChild(dl);
+    }
+    wrap.appendChild(sec);
+  }
+
+  const started = state.phase > 0;
+  wrap.appendChild(el("div", { class: "session-card" }, [
+    el("div", { class: "session-card-body" }, [
+      el("div", { class: "session-card-title", text: "Feeling overwhelmed?" }),
+      el("div", { class: "session-card-sub", text: started
+        ? `Your Sharp Axe session is on step ${state.phase + 1}: ${PHASES[state.phase].title}.`
+        : "Do a Sharp Axe session: clear your space and mind, sort, schedule, then take one task at a time." }),
+    ]),
+    el("button", { class: "btn btn-primary", type: "button", html: `<span>${started ? "Continue session" : "Start a session"}</span>${ARROW_SVG}`,
+      onclick: () => openSteps() }),
+  ]));
+  return wrap;
+}
+
+function openSteps(i = state.phase) {
+  _view = "steps";
+  _openFor = null;
+  state.phase = Math.max(0, Math.min(PHASES.length - 1, i));
+  saveState(); render(true);
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+function openHome() {
+  if (_view === "home") return;
+  _view = "home";
+  breath.running && stopBreathing();
+  render(true);
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
 /* ─── ROUTER ────────────────────────────────────────────────── */
 function renderPhaseContent() {
   const p = PHASES[state.phase];
@@ -2061,6 +2681,7 @@ const ARROW_SVG = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" s
 
 function goTo(i) {
   const next = Math.max(0, Math.min(PHASES.length - 1, i));
+  if (_view !== "steps") { openSteps(next); return; }
   if (next === state.phase) return;
   state.phase = next;
   _pickId = null;
@@ -2075,6 +2696,15 @@ function render(animate = false) {
   content.innerHTML = "";
   content.classList.remove("enter");
   if (animate) { void content.offsetWidth; content.classList.add("enter"); }
+
+  const home = _view === "home";
+  $("#nav").style.display = home ? "none" : "";
+  $("#pips").classList.toggle("on-home", home);
+  if (home) {
+    content.appendChild(renderHome());
+    $("#quoteSlot").innerHTML = "";
+    return;
+  }
   content.appendChild(renderPhaseContent());
 
   const p = PHASES[state.phase];
@@ -2084,8 +2714,8 @@ function render(animate = false) {
   const nextBtn = $("#nextBtn");
   const nextLabel = $("#nextLabel");
 
-  backBtn.classList.toggle("nav-back-hidden", state.phase === 0);
-  backBtn.onclick = () => goTo(state.phase - 1);
+  backBtn.lastChild.textContent = state.phase === 0 ? " My to-dos" : " Back";
+  backBtn.onclick = () => state.phase === 0 ? openHome() : goTo(state.phase - 1);
 
   const isLast = state.phase === PHASES.length - 1;
   if (isLast) {
@@ -2306,6 +2936,159 @@ function downloadFullSession() {
   toast("Session saved");
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   GOOGLE DRIVE: one visible file, "Sharp Axe/sharp-axe-data.json"
+   ═══════════════════════════════════════════════════════════════ */
+const DRIVE_KEY = "sharp-axe-drive";
+const DRIVE_API = "https://www.googleapis.com/drive/v3";
+const DRIVE_UPLOAD = "https://www.googleapis.com/upload/drive/v3";
+const DRIVE_FILE = "sharp-axe-data.json";
+const DRIVE_FOLDER = "Sharp Axe";
+// Only files this app makes. It cannot see anything else in your Drive.
+const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file";
+
+const drive = (() => {
+  try { return { on: false, fileId: "", clientId: "", token: "", exp: 0, lastSaved: 0, ...JSON.parse(localStorage.getItem(DRIVE_KEY) || "{}") }; }
+  catch { return { on: false, fileId: "", clientId: "", token: "", exp: 0, lastSaved: 0 }; }
+})();
+const driveStore = () => { try { localStorage.setItem(DRIVE_KEY, JSON.stringify(drive)); } catch {} };
+const driveTokenOk = () => drive.token && Date.now() < drive.exp - 60000;
+
+function loadGoogleScript() {
+  if (window.google?.accounts?.oauth2) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const sc = document.createElement("script");
+    sc.src = "https://accounts.google.com/gsi/client";
+    sc.onload = resolve;
+    sc.onerror = () => reject(new Error("Could not load Google sign-in"));
+    document.head.appendChild(sc);
+  });
+}
+
+// Google gives a browser app a 1-hour key. Getting a new one needs a click.
+async function driveSignIn() {
+  if (driveTokenOk()) return;
+  let clientId = GOOGLE_CLIENT_ID || drive.clientId;
+  if (!clientId) {
+    clientId = (prompt("Paste your Google OAuth Client ID.\n(See GOOGLE-SETUP.md in the project for the steps.)") || "").trim();
+    if (!clientId) throw new Error("No Client ID");
+    drive.clientId = clientId; driveStore();
+  }
+  await loadGoogleScript();
+  await new Promise((resolve, reject) => {
+    google.accounts.oauth2.initTokenClient({
+      client_id: clientId,
+      scope: DRIVE_SCOPE,
+      callback: (r) => {
+        if (r.error) return reject(new Error(r.error_description || r.error));
+        drive.token = r.access_token;
+        drive.exp = Date.now() + Number(r.expires_in || 3600) * 1000;
+        driveStore(); resolve();
+      },
+      error_callback: () => reject(new Error("Sign-in was closed")),
+    }).requestAccessToken({ prompt: "" });
+  });
+}
+
+async function gfetch(url, opts = {}) {
+  const res = await fetch(url, { ...opts, headers: { Authorization: `Bearer ${drive.token}`, ...(opts.headers || {}) } });
+  if (res.status === 401) { drive.token = ""; driveStore(); throw new Error("Google sign-in expired. Open the menu and tap Google Drive."); }
+  if (!res.ok) {
+    let msg = `Google Drive error ${res.status}`;
+    try { msg = (await res.json()).error?.message || msg; } catch {}
+    const e = new Error(msg); e.status = res.status; throw e;
+  }
+  return res;
+}
+
+async function driveFindFile() {
+  if (drive.fileId) {
+    try {
+      const f = await (await gfetch(`${DRIVE_API}/files/${drive.fileId}?fields=id,trashed`)).json();
+      if (!f.trashed) return f.id;
+    } catch (e) { if (e.status !== 404) throw e; }
+  }
+  const q = encodeURIComponent(`name='${DRIVE_FILE}' and trashed=false`);
+  const found = await (await gfetch(`${DRIVE_API}/files?q=${q}&fields=files(id)&pageSize=1`)).json();
+  drive.fileId = found.files?.[0]?.id || "";
+  driveStore();
+  return drive.fileId;
+}
+
+const drivePayload = () => JSON.stringify({ type: "sharp-axe-drive", version: 1, savedAt: state.savedAt, state });
+
+async function driveWrite() {
+  const id = await driveFindFile();
+  if (id) {
+    await gfetch(`${DRIVE_UPLOAD}/files/${id}?uploadType=media`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" }, body: drivePayload(),
+    });
+  } else {
+    const fq = encodeURIComponent(`name='${DRIVE_FOLDER}' and mimeType='application/vnd.google-apps.folder' and trashed=false`);
+    let folderId = (await (await gfetch(`${DRIVE_API}/files?q=${fq}&fields=files(id)&pageSize=1`)).json()).files?.[0]?.id;
+    if (!folderId) {
+      folderId = (await (await gfetch(`${DRIVE_API}/files?fields=id`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: DRIVE_FOLDER, mimeType: "application/vnd.google-apps.folder" }),
+      })).json()).id;
+    }
+    const boundary = "sharpaxe" + Date.now();
+    const meta = { name: DRIVE_FILE, parents: [folderId], mimeType: "application/json" };
+    const body = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n` +
+                 `--${boundary}\r\nContent-Type: application/json\r\n\r\n${drivePayload()}\r\n--${boundary}--`;
+    drive.fileId = (await (await gfetch(`${DRIVE_UPLOAD}/files?uploadType=multipart&fields=id`, {
+      method: "POST", headers: { "Content-Type": `multipart/related; boundary=${boundary}` }, body,
+    })).json()).id;
+  }
+  drive.lastSaved = Date.now();
+  driveStore();
+}
+
+// If Drive has a newer copy (saved on another device), offer to load it.
+async function driveCheckNewer() {
+  const id = await driveFindFile();
+  if (!id) return false;
+  const remote = await (await gfetch(`${DRIVE_API}/files/${id}?alt=media`)).json();
+  if (!remote?.state || !(remote.savedAt > (state.savedAt || 0))) return false;
+  const when = new Date(remote.savedAt).toLocaleString();
+  if (!confirm(`Google Drive has a newer copy (saved ${when}).\n\nOK = Load it (replaces what is on this device)\nCancel = Keep this device's copy`)) return false;
+  state = hydrate(remote.state);
+  _savedSig = stateSig();
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
+  render();
+  toast("Loaded your data from Google Drive");
+  return true;
+}
+
+async function driveConnect() {
+  try {
+    await driveSignIn();
+    drive.on = true; driveStore();
+    const loaded = await driveCheckNewer();
+    if (!loaded) await driveWrite();
+    toast(loaded ? "Google Drive is on" : "Saved to Google Drive");
+  } catch (e) {
+    toast(e.message || "Google Drive did not work", "error");
+  }
+  renderDriveMenu();
+}
+
+let _driveTimer = null;
+function driveAutoSave() {
+  if (!drive.on || !driveTokenOk()) return;
+  clearTimeout(_driveTimer);
+  _driveTimer = setTimeout(() => driveWrite().catch(e => toast(e.message, "error")).finally(renderDriveMenu), 3000);
+}
+
+function renderDriveMenu() {
+  const sub = $("#driveSub"), off = $("#miDriveOff");
+  if (!sub) return;
+  off.hidden = !drive.on;
+  if (!drive.on) sub.textContent = "Save your data to Drive";
+  else if (!driveTokenOk()) sub.textContent = "Tap to sign in again and sync";
+  else sub.textContent = drive.lastSaved ? `On · saved ${new Date(drive.lastSaved).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}` : "On";
+}
+
 /* ─── MENU WIRING ───────────────────────────────────────────── */
 const menuBtn = $("#menuBtn");
 const menuDropdown = $("#menuDropdown");
@@ -2315,6 +3098,7 @@ function closeMenu() {
   menuBtn.setAttribute("aria-expanded", "false");
 }
 function openMenu() {
+  renderDriveMenu();
   menuDropdown.classList.add("open");
   menuBtn.classList.add("open");
   menuBtn.setAttribute("aria-expanded", "true");
@@ -2337,10 +3121,30 @@ $("#miImport").addEventListener("click", () => { closeMenu(); importTodos(); });
 $("#miExport").addEventListener("click", () => { closeMenu(); exportTodos(); });
 $("#miSaveAll").addEventListener("click", () => { closeMenu(); downloadFullSession(); });
 $("#fileInput").addEventListener("change", handleFileImport);
+$("#miDrive").addEventListener("click", () => { closeMenu(); driveConnect(); });
+$("#miDriveOff").addEventListener("click", () => {
+  closeMenu();
+  drive.on = false; drive.token = ""; driveStore();
+  toast("Google Drive is off. Your Drive file stays.");
+});
+$("#brand").addEventListener("click", openHome);
+$("#brand").addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openHome(); } });
 
 /* ─── KICKOFF ───────────────────────────────────────────────── */
+_savedSig = stateSig();
 render(true);
 window.addEventListener("beforeunload", saveState);
+
+// Keep countdowns fresh, and redraw the list now and then so order and
+// "time passed" notes follow the clock (not while you are typing).
+setInterval(() => {
+  updateCountdowns();
+  const a = document.activeElement;
+  const typing = a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName);
+  if (!typing && !_openFor && (_view === "home" || PHASES[state.phase].type === "triage")) render();
+}, 60000);
+
+if (drive.on && driveTokenOk()) driveCheckNewer().catch(() => {});
 </script>
 
 </body>
