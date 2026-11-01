@@ -762,6 +762,14 @@
   .sub-top .check-circle { width: 20px; height: 20px; border-radius: 50%; cursor: pointer; }
   .sub-row.done .check-circle { background: var(--good); border-color: var(--good); color: #fff; }
   .sub-row.done .sub-text { text-decoration: line-through; color: var(--ink-muted); }
+  .sub-row.locked { opacity: 0.6; }
+  .sub-row.next { box-shadow: inset 3px 0 0 var(--accent); }
+  .sub-num { min-width: 20px; text-align: center; font-size: 12px; font-weight: 800; color: var(--ink-muted); }
+  .sub-row.next .sub-num { color: var(--accent); }
+  .icon-btn:disabled { opacity: 0.3; cursor: default; }
+  .seg.imp-scale button { min-width: 36px; justify-content: center; }
+  .seg.imp-scale button.active { background: var(--c); color: #fff; }
+  .seg.imp-scale button.not-set.active { background: var(--steel); color: var(--bg); }
   input[type="text"].sub-text { flex: 1; min-width: 0; border: none; background: transparent; padding: 3px 0; font-size: 14px; box-shadow: none; }
   .sub-more { display: flex; flex-direction: column; gap: 8px; padding: 8px 0 2px 28px; }
   .sub-details { min-height: 60px; font-size: 13px; }
@@ -1125,6 +1133,10 @@ function normalizeTask(t) {
       .filter(x => typeof x === "string" && x.trim()).map(x => x.trim()))],
     // Ids of tasks that must be finished before this one.
     after: Array.isArray(t.after) ? t.after.filter(x => x != null && x !== t.id) : [],
+    // Importance 1 (low) … 7 (very important). Empty = not set yet.
+    importance: Number(t.importance) >= 1 && Number(t.importance) <= 7 ? Math.round(Number(t.importance)) : null,
+    // Sub-bubbles must be done in order (later parts lock until earlier ones are done).
+    inOrder: !!t.inOrder,
     // Due date (the deadline). With no time, it is due at the end of that day.
     dueDate: typeof t.dueDate === "string" ? t.dueDate : "",
     dueTime: typeof t.dueTime === "string" ? t.dueTime : "",
@@ -1349,7 +1361,7 @@ function recordSlice(t, sub = null) {
   const x = sub || t, due = dueAt(x), now = Date.now();
   state.garden.push({
     id: uid(), taskId: t.id, subId: sub ? sub.id : null,
-    text: x.text, quadrant: t.quadrant, tags: [...(t.tags || [])], isSub: !!sub,
+    text: x.text, quadrant: t.quadrant, importance: importanceOf(t), tags: [...(t.tags || [])], isSub: !!sub,
     slicedAt: now, dueAt: due ? due.getTime() : null, onTime: due ? now <= due.getTime() : null,
     duration: x.duration || 30, focusMin: sub ? 0 : (t.focusMin || 0), details: x.details || "",
     tree: treeFor(sub ? `${t.id}:${sub.id}` : t.id),
@@ -1361,13 +1373,30 @@ function unrecordSlice(t, sub = null) {
     if (g.taskId === t.id && (g.subId ?? null) === (sub ? sub.id : null)) { state.garden.splice(i, 1); return; }
   }
 }
+// Sub-bubbles keep their order. With "in order" on, only the next one can be done.
+const subNumber = (t, s) => t.steps.indexOf(s) + 1;
+const nextSub = (t) => t.steps.find(x => !x.done);
+const subLocked = (t, s) => !!t.inOrder && !s.done && nextSub(t) !== s;
+function lockedSubMsg(t, s) {
+  const n = nextSub(t);
+  return `Do part ${subNumber(t, n)} first: “${n.text}”.`;
+}
 // Finish or reopen a sub-bubble, keeping history and the garden in step.
 function setSubDone(t, s, done) {
-  if (s.done === done) return;
+  if (s.done === done) return true;
+  if (done && subLocked(t, s)) { toast(lockedSubMsg(t, s), "error"); return false; }
   s.done = done;
   s.doneAt = done ? Date.now() : 0;
   if (done) { recordSlice(t, s); logEvent(t, "sub sliced", s.text); }
   else { unrecordSlice(t, s); logEvent(t, "sub reopened", s.text); }
+  return true;
+}
+function moveSub(t, s, dir) {
+  const i = t.steps.indexOf(s), j = i + dir;
+  if (j < 0 || j >= t.steps.length) return;
+  [t.steps[i], t.steps[j]] = [t.steps[j], t.steps[i]];
+  logEvent(t, "sub moved", `${s.text} → place ${j + 1}`);
+  saveState(); render();
 }
 function reopenTask(t) {
   t.done = false;
@@ -1626,8 +1655,11 @@ function addTask(text, quadrant = null) {
           || tag.charAt(0).toUpperCase() + tag.slice(1));
     return " ";
   }).replace(/\s+/g, " ").trim();
+  // "!6" sets importance (1–7).
+  let importance = null;
+  clean = clean.replace(/(^|\s)!([1-7])(?=\s|$)/, (m, sp, n) => { importance = Number(n); return " "; }).replace(/\s+/g, " ").trim();
   if (!clean) return null;
-  const task = normalizeTask({ text: clean, quadrant, tags });
+  const task = normalizeTask({ text: clean, quadrant, tags, importance });
   logEvent(task, "created", tags.length ? tags.map(x => `#${x}`).join(" ") : "");
   state.tasks.push(task);
   return task;
@@ -2434,7 +2466,7 @@ function stepsBlock(task) {
         onclick: () => { setSubDone(task, s, !s.done); saveState(); render(); },
         onkeydown: (e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); setSubDone(task, s, !s.done); saveState(); render(); } },
       }),
-      el("span", { class: "step-text", text: (i === nextIdx ? "Next: " : "") + s.text }),
+      el("span", { class: "step-text", text: `${subLocked(task, s) ? "🔒 " : ""}${i + 1}. ${i === nextIdx ? "Next: " : ""}${s.text}` }),
       el("button", {
         class: "icon-btn danger", type: "button", "aria-label": "Remove step", html: SVG.x,
         onclick: () => { task.steps = steps.filter(x => x.id !== s.id); saveState(); render(); },
@@ -2772,8 +2804,20 @@ let _homeSort = "importance"; // or "soonest"
 let _openFor = null;
 let _homeShowDone = false;
 
-const IMPORTANCE_RANK = { q1: 0, quick: 1, q2: 2 }; // not sorted = 3, Eliminate = 4
-const importanceRank = t => t.quadrant === "q4" ? 4 : (IMPORTANCE_RANK[t.quadrant] ?? 3);
+// Importance 1 (low) … 7 (very important). With no number set, the box from
+// the Sort step gives a guess; with neither, it counts as 4 (the middle).
+const QUAD_IMPORTANCE = { q1: 7, q2: 5, quick: 4, q4: 1 };
+const importanceOf = (t) => t.importance ?? QUAD_IMPORTANCE[t.quadrant] ?? 4;
+const IMPORTANCE_COLORS = ["#8a94a3", "#6b8cae", "#3f8fd2", "#2fa39a", "#9b6be0", "#e0a028", "#e0443a"];
+const importanceColor = (n) => IMPORTANCE_COLORS[Math.max(1, Math.min(7, Math.round(n))) - 1];
+function importanceBadge(t) {
+  const n = importanceOf(t);
+  return el("span", {
+    class: "badge", style: { "--c": importanceColor(n) },
+    title: t.importance ? `Importance ${n} of 7` : `Importance not set (counts as ${n})`,
+    text: t.importance ? `★ ${n}` : `★ ${n}?`,
+  });
+}
 function dueMs(t) {
   const d = dueAt(t) || (t.steps || []).filter(s => !s.done).map(dueAt).filter(Boolean).sort((a, b) => a - b)[0];
   if (d) return d.getTime();
@@ -2783,7 +2827,7 @@ function dueMs(t) {
 }
 const cmp = (x, y) => x < y ? -1 : x > y ? 1 : 0;
 function homeCompare(a, b) {
-  const imp = cmp(importanceRank(a), importanceRank(b));
+  const imp = cmp(importanceOf(b), importanceOf(a)); // 7 first
   const urg = cmp(dueMs(a), dueMs(b));
   return (_homeSort === "soonest" ? (urg || imp) : (imp || urg)) || state.tasks.indexOf(a) - state.tasks.indexOf(b);
 }
@@ -2796,7 +2840,7 @@ function homeCompare(a, b) {
 // Long titles make pill shapes. Sub-bubbles float in a pocket inside their
 // parent, in a small physics world of their own that sloshes when the parent
 // moves. "Must finish first" links are springs. A tag group pulls itself
-// together (matter-attractors). Hold right-click on a blob to slice it.
+// together (matter-attractors). Hold down on a blob to slice it.
 const HAS_PHYSICS = !!window.Matter;
 if (HAS_PHYSICS && window.MatterAttractors) Matter.use(MatterAttractors);
 const HOME_MODE_KEY = "sharp-axe-home-mode";
@@ -2807,14 +2851,13 @@ let _groupTag = "";    // tag to cluster and highlight
 let _linkFrom = null;  // Link tool: first task tapped, waiting for the second
 
 const FLUID = 0.001;   // liquid density at the very top of the jar
-const IMPORTANCE_WEIGHT = { q1: 0, quick: 0.2, q2: 0.45, q4: 1 }; // not sorted: 0.6
 // Collision groups: blobs bump blobs and walls; slice pieces only hit walls.
 const CAT_BLOB = 0x0001, CAT_PIECE = 0x0002, CAT_WALL = 0x0004;
 const CHARGE_MS = 800;
 
 // 0 = light (floats up) … 1 = heavy (sinks).
 function weightParts(t, now = Date.now()) {
-  const imp = IMPORTANCE_WEIGHT[t.quadrant] ?? 0.6;
+  const imp = (7 - importanceOf(t)) / 6; // 7 → 0 (light), 1 → 1 (heavy)
   const until = dueMs(t) - now;
   const urg = until === Infinity ? 1 : until <= 3600e3 ? 0 : until <= 86400e3 ? 0.3 : until <= 7 * 86400e3 ? 0.6 : 1;
   const mins = Math.min(240, Math.max(15, t.duration || 30));
@@ -2826,10 +2869,9 @@ const fluidAt = (y) => FLUID * (0.6 + Math.max(0, Math.min(1, y / (jar.h || 1)))
 
 function weightReasons(t) {
   const { w } = weightParts(t);
-  const q = qInfo(t.quadrant);
   return [
     w < 0.35 ? "Floats up" : w < 0.65 ? "Floats in the middle" : "Sinks",
-    q ? q.label : "Not sorted",
+    t.importance ? `importance ${t.importance}/7` : `importance not set (${importanceOf(t)})`,
     `takes about ${durLabel(t.duration || 30)}`,
   ].join(" · ");
 }
@@ -2953,7 +2995,10 @@ function blobShape(t, crowd = 1) {
     const pocket = subs.reduce((n, s) => n + Math.PI * (subRadius(s) * crowd) ** 2, 0) * 2.4;
     const band = 44 * k;
     const w = Math.min(jar.w * 0.62, Math.max(2 * r, textW / 2 + 40 * k, Math.sqrt(pocket * 1.5)));
-    const h = Math.max(2 * r, band + pocket / (w - 16) + 16);
+    // Room for the beads in rows, in order.
+    const cell = 2 * Math.max(...subs.map(s => Math.max(8, subRadius(s) * crowd))) + 6;
+    const cols = Math.max(1, Math.floor((w - 14) / cell));
+    const h = Math.max(2 * r, band + pocket / (w - 16) + 16, band + Math.ceil(subs.length / cols) * cell + 14);
     return { kind: "box", w, h, cr: Math.min(28 * k, h / 3), band };
   }
   if (textW <= 2 * r * 1.55 * 1.6) return { kind: "circle", w: 2 * r, h: 2 * r, cr: r };
@@ -3031,7 +3076,23 @@ function makePocket(parent) {
     Bodies.rectangle(pr.x0 - T / 2, cy, T, h + 2 * T, o),
     Bodies.rectangle(pr.x1 + T / 2, cy, T, h + 2 * T, o),
   ]);
-  return { engine, pr, subs: new Map(), lastV: { ...parent.velocity } };
+  const pk = { engine, pr, subs: new Map(), order: [], chain: [], lastV: { ...parent.velocity } };
+  // Each bead is pulled gently toward its place in the row (snake order),
+  // so the order is easy to read but the beads still slosh.
+  Matter.Events.on(engine, "beforeUpdate", () => {
+    const beads = pk.order.map(id => pk.subs.get(id)).filter(Boolean);
+    if (!beads.length) return;
+    const cell = 2 * Math.max(...beads.map(b => b.circleRadius)) + 6;
+    const cols = Math.max(1, Math.floor((pr.x1 - pr.x0 - 6) / cell));
+    const left = pr.x0 + (pr.x1 - pr.x0 - Math.min(cols, beads.length) * cell) / 2 + cell / 2;
+    beads.forEach((b, i) => {
+      const row = Math.floor(i / cols), col = row % 2 ? cols - 1 - (i % cols) : i % cols;
+      const tx = left + col * cell, ty = pr.y0 + 4 + cell / 2 + row * cell;
+      const k = 0.00008 * b.mass;
+      Matter.Body.applyForce(b, b.position, { x: (tx - b.position.x) * k, y: (ty - b.position.y) * k });
+    });
+  });
+  return pk;
 }
 function syncPocket(parent, t, crowd) {
   const { Bodies, Composite, Body } = Matter;
@@ -3057,6 +3118,15 @@ function syncPocket(parent, t, crowd) {
     sb.plugin.sub = s;
     sb.plugin.task = t;
   }
+  // A string of beads: each part is tied to the next one.
+  pk.order = subs.map(s => s.id);
+  Composite.remove(pk.engine.world, pk.chain);
+  pk.chain = [];
+  for (let i = 1; i < subs.length; i++) {
+    const a = pk.subs.get(subs[i - 1].id), b = pk.subs.get(subs[i].id);
+    pk.chain.push(Matter.Constraint.create({ bodyA: a, bodyB: b, length: a.circleRadius + b.circleRadius + 4, stiffness: 0.02, damping: 0.05 }));
+  }
+  Composite.add(pk.engine.world, pk.chain);
 }
 // The pocket's gravity is the jar's gravity minus the parent's acceleration,
 // so the sub-bubbles slosh when you move the parent.
@@ -3176,43 +3246,52 @@ function hitAt(p) {
 }
 
 /* ---- pointer: drag, tap, menu, link, charge-and-slice ---- */
+// Hold on a bubble (left or right button, finger or pen) to charge a slice.
+// Move away early to drag it instead. A quick right-click opens the menu.
+const HOLD_MS = 350, HOLD_SLOP = 12, CHARGE_CANCEL = 45;
+function startBlobDrag(b, p) {
+  endDrag();
+  jar.drag = Matter.Constraint.create({
+    pointA: { ...p }, bodyB: b,
+    pointB: { x: p.x - b.position.x, y: p.y - b.position.y },
+    stiffness: 0.08, damping: 0.1, length: 0,
+  });
+  Matter.Composite.add(jar.engine.world, jar.drag);
+}
 function jarPointerDown(e) {
   closeJarMenu();
   const p = jarPoint(e), hit = hitAt(p);
-  jar.down = { p, hit, t0: performance.now(), moved: false, button: e.button, type: e.pointerType };
+  jar.down = { p, last: p, hit, t0: performance.now(), moved: false, button: e.button, type: e.pointerType };
   if (!hit) return;
+  e.preventDefault();
   jar.canvas.setPointerCapture?.(e.pointerId);
   jar.tip.style.opacity = "0";
-  if (e.button === 2) {
-    // Hold the right button: after a short moment, the slice starts charging.
-    jar.down.press = setTimeout(() => startCharge(hit), 200);
-    return;
+  if (e.button !== 2) {
+    if (_tool === "link") jar.linkLine = { from: hit.body, p };
+    else startBlobDrag(hit.body, p);
   }
-  if (_tool === "link") {
-    jar.linkLine = { from: hit.body, p };
-  } else {
-    const b = hit.body;
-    jar.drag = Matter.Constraint.create({
-      pointA: { ...p }, bodyB: b,
-      pointB: { x: p.x - b.position.x, y: p.y - b.position.y },
-      stiffness: 0.08, damping: 0.1, length: 0,
-    });
-    Matter.Composite.add(jar.engine.world, jar.drag);
-  }
-  // Touch: hold still to charge a slice. Mouse: hold still for the menu.
   jar.down.press = setTimeout(() => {
     if (!jar.down || jar.down.moved) return;
-    if (e.pointerType === "mouse") { endDrag(); jar.linkLine = null; openJarMenu(hit, p); jar.down = null; }
-    else { endDrag(); jar.linkLine = null; startCharge(hit); }
-  }, e.pointerType === "mouse" ? 550 : 300);
+    endDrag();
+    jar.linkLine = null;
+    startCharge(hit);
+  }, e.button === 2 ? 150 : HOLD_MS);
 }
 
 function jarPointerMove(e) {
   const p = jarPoint(e);
   if (jar.down) {
-    if (Math.hypot(p.x - jar.down.p.x, p.y - jar.down.p.y) > 6) {
+    jar.down.last = p;
+    if (!jar.charge && !jar.down.moved && Math.hypot(p.x - jar.down.p.x, p.y - jar.down.p.y) > HOLD_SLOP) {
       jar.down.moved = true;
-      if (!jar.charge) clearTimeout(jar.down.press);
+      clearTimeout(jar.down.press);
+    }
+    // While charging, a big move cancels the slice (and picks the blob up again).
+    if (jar.charge && jar.charge.p0 && Math.hypot(p.x - jar.charge.p0.x, p.y - jar.charge.p0.y) > CHARGE_CANCEL) {
+      const ch = jar.charge;
+      jar.charge = null;
+      jar.down.moved = true;
+      if (jar.down.button !== 2 && _tool === "move" && !ch.hit.sub) startBlobDrag(ch.hit.body, p);
     }
     if (jar.drag) jar.drag.pointA = p;
     if (jar.linkLine) jar.linkLine.p = p;
@@ -3240,7 +3319,7 @@ function updateJarTip() {
     !h.sub && (t.tags || []).length ? el("div", { text: t.tags.map(x => `#${x}`).join(" ") }) : null,
     !h.sub && waitingOn(t).length ? el("div", { text: `🔒 Finish first: ${waitingOn(t).map(x => x.text).join(", ")}` }) : null,
     x.details ? el("div", { class: "tip-dim", text: x.details.length > 90 ? x.details.slice(0, 90) + "…" : x.details }) : null,
-    el("div", { class: "tip-dim", text: "Hold right-click to slice" }),
+    el("div", { class: "tip-dim", text: "Hold down on it to slice" }),
   );
   jar.tip.style.left = `${Math.max(4, Math.min(h.p.x + 14, jar.w - 250))}px`;
   jar.tip.style.top = `${Math.max(4, Math.min(h.p.y + 14, jar.h - jar.tip.offsetHeight - 6))}px`;
@@ -3335,7 +3414,8 @@ function startCharge(hit) {
   jar.charge = {
     hit, t0: performance.now(),
     angle: -0.45 + Math.random() * 0.3,
-    blocked: !hit.sub && isBlocked(hit.task),
+    blocked: hit.sub ? subLocked(hit.task, hit.sub) : isBlocked(hit.task),
+    p0: jar.down ? { ...jar.down.last } : null,
     broken: false,
   };
 }
@@ -3362,6 +3442,7 @@ function splitPolygon(pts, c, angle) {
 function doSlice(hit, angle) {
   const t = hit.task, s = hit.sub;
   if (!s && isBlocked(t)) { completeTask(t, null); return; } // shows "finish X first"
+  if (s && subLocked(t, s)) { toast(lockedSubMsg(t, s), "error"); return; }
   const { Bodies, Body, Composite } = Matter;
   let center, pts, color = blobColor(t), r;
   if (s) {
@@ -3425,8 +3506,9 @@ function sliceTask(t, fromEl) {
 function sliceSub(t, s, fromEl) {
   const pk = jar.bodies.get(t.id)?.plugin.pocket;
   const sb = pk?.subs.get(s.id);
+  if (subLocked(t, s)) { toast(lockedSubMsg(t, s), "error"); return; }
   if (sb && jar.wrap?.isConnected) { doSlice({ body: jar.bodies.get(t.id), subBody: sb, task: t, sub: s }, -0.3); return; }
-  setSubDone(t, s, true);
+  if (!setSubDone(t, s, true)) return;
   celebrate(fromEl);
   saveState(); render();
 }
@@ -3477,8 +3559,8 @@ function jellyStep(b) {
 
 /* ---- drawing ---- */
 function blobColor(t) {
-  const c = jar.colors;
-  return { q1: c.q1, q2: c.q2, quick: c.quick, q4: c.q4 }[t?.quadrant] || c.muted;
+  if (!t || (!t.importance && !t.quadrant)) return jar.colors.muted;
+  return importanceColor(importanceOf(t));
 }
 
 function wrapLines(ctx, text, maxW, maxLines) {
@@ -3604,8 +3686,8 @@ function drawJar(ts) {
   const chargeK = ch ? Math.min(1, (performance.now() - ch.t0) / CHARGE_MS) : 0;
   if (ch && ch.blocked && chargeK >= 1 && !ch.broken) {
     ch.broken = true;
-    const w = waitingOn(ch.hit.task)[0];
-    toast(`Finish “${w?.text}” first. Then this one opens up.`, "error");
+    if (ch.hit.sub) toast(lockedSubMsg(ch.hit.task, ch.hit.sub), "error");
+    else toast(`Finish “${waitingOn(ch.hit.task)[0]?.text}” first. Then this one opens up.`, "error");
   }
 
   for (const b of bodies) {
@@ -3619,7 +3701,7 @@ function drawJar(ts) {
     ctx.globalAlpha = _groupTag && !hasTag(t, _groupTag) ? 0.3 : blocked ? 0.62 : 1;
     jellyPath(ctx, b, ts, charging ? 2 * chargeK : 0);
     ctx.fillStyle = c.surface; ctx.fill();
-    ctx.fillStyle = rgba(col, t.quadrant ? 0.2 : 0.1); ctx.fill();
+    ctx.fillStyle = rgba(col, t.importance || t.quadrant ? 0.2 : 0.1); ctx.fill();
     ctx.strokeStyle = due ? RING(c, due.cls) : rgba(col, 0.75);
     ctx.lineWidth = due ? 3 : 2;
     ctx.stroke();
@@ -3651,8 +3733,20 @@ function drawJar(ts) {
       ctx.beginPath();
       ctx.roundRect?.(ox + pr.x0, oy + pr.y0, pr.x1 - pr.x0, pr.y1 - pr.y0, pr.r);
       ctx.fill();
+      // The string between the beads.
+      ctx.strokeStyle = rgba(col, 0.55); ctx.lineWidth = 1.5; ctx.setLineDash([3, 3]);
+      for (const con of pk.chain) {
+        ctx.beginPath();
+        ctx.moveTo(ox + con.bodyA.position.x, oy + con.bodyA.position.y);
+        ctx.lineTo(ox + con.bodyB.position.x, oy + con.bodyB.position.y);
+        ctx.stroke();
+      }
+      ctx.setLineDash([]);
       for (const sb of pk.subs.values()) {
         const s = sb.plugin.sub;
+        const locked = subLocked(t, s), isNext = t.inOrder && nextSub(t) === s;
+        ctx.save();
+        if (locked) ctx.globalAlpha *= 0.5;
         const view = { ...sb, position: { x: ox + sb.position.x, y: oy + sb.position.y }, plugin: sb.plugin, velocity: sb.velocity, circleRadius: sb.circleRadius };
         const subCharging = ch && ch.hit.subBody === sb;
         if (subCharging && !reduceMotion()) { ctx.save(); ctx.translate((Math.random() - 0.5) * 3 * chargeK, (Math.random() - 0.5) * 3 * chargeK); }
@@ -3660,13 +3754,18 @@ function drawJar(ts) {
         ctx.fillStyle = c.surface; ctx.fill();
         ctx.fillStyle = rgba(col, 0.16); ctx.fill();
         const sd = dueInfo(s);
-        ctx.strokeStyle = sd ? RING(c, sd.cls) : rgba(col, 0.6); ctx.lineWidth = sd ? 2 : 1.3; ctx.stroke();
+        ctx.strokeStyle = isNext ? c.accent : sd ? RING(c, sd.cls) : rgba(col, 0.6);
+        ctx.lineWidth = isNext ? 2.5 : sd ? 2 : 1.3; ctx.stroke();
         const sfs = Math.max(8.5, Math.min(11, sb.circleRadius / 2.4));
+        // Its place in the order, at the top of the bead.
+        ctx.font = `800 ${sfs}px ${c.sans}`; ctx.fillStyle = isNext ? c.accent : c.mid;
+        ctx.fillText(locked ? `🔒${subNumber(t, s)}` : String(subNumber(t, s)), view.position.x, view.position.y - sb.circleRadius + sfs * 0.95);
         ctx.font = `600 ${sfs}px ${c.sans}`; ctx.fillStyle = c.ink;
         const sl = wrapLines(ctx, s.text, sb.circleRadius * 1.6, 2);
-        let sy = view.position.y - (sl.length - 1) * sfs * 0.6;
+        let sy = view.position.y + sfs * 0.35 - (sl.length - 1) * sfs * 0.6;
         for (const line of sl) { ctx.fillText(line, view.position.x, sy); sy += sfs * 1.2; }
         if (subCharging) ctx.restore();
+        ctx.restore();
       }
     }
     ctx.restore();
@@ -3968,7 +4067,7 @@ function drawGarden(ts) {
 
   // Pieces: wobbly, coloured by importance.
   for (const p of garden.pieces) {
-    const g = p.plugin.slice, col = { q1: c.q1, q2: c.q2, quick: c.quick, q4: c.q4 }[g.quadrant] || c.muted;
+    const g = p.plugin.slice, col = g.importance ? importanceColor(g.importance) : ({ q1: c.q1, q2: c.q2, quick: c.quick, q4: c.q4 }[g.quadrant] || c.muted);
     const s = p.plugin.seed, cx = p.position.x, cy = p.position.y;
     ctx.beginPath();
     p.vertices.forEach((v, i) => {
@@ -4184,19 +4283,25 @@ const SUB_DURATIONS = [5, 10, 15, 30, 45, 60, 90, 120];
 let _subDetailsOpen = null;
 function subBubblesEditor(t) {
   const list = el("div", { class: "subs" });
-  t.steps.forEach(s => {
+  t.steps.forEach((s, i) => {
     const open = _subDetailsOpen === s.id;
-    list.appendChild(el("div", { class: `sub-row ${s.done ? "done" : ""}` }, [
+    const locked = subLocked(t, s);
+    list.appendChild(el("div", { class: `sub-row ${s.done ? "done" : ""} ${locked ? "locked" : ""} ${t.inOrder && nextSub(t) === s ? "next" : ""}` }, [
       el("div", { class: "sub-top" }, [
+        el("span", { class: "sub-num", text: locked ? "🔒" : String(i + 1), title: locked ? lockedSubMsg(t, s) : `Part ${i + 1}` }),
         el("span", {
           class: "check-circle", role: "checkbox", "aria-checked": String(s.done), tabindex: "0",
-          title: s.done ? "Not done after all" : "Slice it (done)", html: s.done ? SVG.check : "",
+          title: s.done ? "Not done after all" : locked ? lockedSubMsg(t, s) : "Slice it (done)", html: s.done ? SVG.check : "",
           onclick: (e) => s.done ? (setSubDone(t, s, false), saveState(), render()) : sliceSub(t, s, e.currentTarget),
           onkeydown: (e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); e.currentTarget.click(); } },
         }),
         el("input", { type: "text", class: "sub-text", value: s.text, "aria-label": "Sub-bubble",
           oninput: (e) => { s.text = e.target.value; saveState(); } }),
         dueInfo(s) && !s.done ? el("span", { class: `badge ${dueInfo(s).cls}`, text: dueInfo(s).short }) : null,
+        el("button", { class: "icon-btn", type: "button", title: "Move up", "aria-label": `Move part ${i + 1} up`, html: SVG.up,
+          disabled: i === 0, onclick: () => moveSub(t, s, -1) }),
+        el("button", { class: "icon-btn", type: "button", title: "Move down", "aria-label": `Move part ${i + 1} down`, html: SVG.down,
+          disabled: i === t.steps.length - 1, onclick: () => moveSub(t, s, 1) }),
         el("button", { class: `icon-btn ${open ? "on" : ""}`, type: "button", title: "Due, time and details", "aria-label": "More", html: SVG.edit,
           onclick: () => { _subDetailsOpen = open ? null : s.id; render(); } }),
         el("button", { class: "icon-btn danger", type: "button", "aria-label": "Remove sub-bubble", html: SVG.x,
@@ -4222,7 +4327,15 @@ function subBubblesEditor(t) {
   };
   return el("div", {}, [
     el("span", { class: "section-label", text: `Sub-bubbles${t.steps.length ? ` (${t.steps.filter(x => x.done).length}/${t.steps.length} done)` : ""}` }),
-    el("div", { class: "hint", text: "Break it into smaller parts. They float inside the bubble, and you can slice each one." }),
+    el("div", { class: "hint", text: "Break it into smaller parts, in order. They float inside the bubble like a string of beads, and you can slice each one." }),
+    t.steps.length > 1 ? el("label", { class: "check-line", style: { marginBottom: "8px" } }, [
+      el("input", { type: "checkbox", checked: t.inOrder, onchange: (e) => {
+        t.inOrder = e.target.checked;
+        logEvent(t, "in order", t.inOrder ? "on" : "off");
+        saveState(); render();
+      } }),
+      "Do these in order (later parts lock until the earlier ones are done)",
+    ]) : null,
     list,
     el("div", { class: "input-row", style: { margin: 0 } }, [
       el("input", { type: "text", id: inputId, placeholder: t.steps.length ? "Add another part…" : "First small part? (for example: open the file)",
@@ -4235,7 +4348,7 @@ function subBubblesEditor(t) {
 const HISTORY_LABEL = {
   created: "Created", "importance": "Importance", "due changed": "Due date", "takes about": "Takes about",
   tags: "Tags", details: "Details edited", "sub added": "Sub-bubble added", "sub removed": "Sub-bubble removed",
-  "sub sliced": "Sub-bubble sliced", "sub reopened": "Sub-bubble reopened", linked: "Linked", sliced: "Sliced (done)",
+  "sub sliced": "Sub-bubble sliced", "sub reopened": "Sub-bubble reopened", "sub moved": "Sub-bubble moved", "in order": "In order", linked: "Linked", sliced: "Sliced (done)",
   reopened: "Reopened", renamed: "Renamed",
 };
 function historyBlock(t) {
@@ -4262,14 +4375,18 @@ function homeEditor(t) {
   return el("div", { class: "home-editor" }, [
     textIn,
     el("div", {}, [
-      el("span", { class: "section-label", text: "How important?" }),
-      el("div", { class: "seg" }, [
-        ...QUADRANTS.map(q => el("button", {
-          type: "button", class: t.quadrant === q.id ? "active" : "", text: q.label, title: q.sub,
-          onclick: () => { t.quadrant = q.id; logEvent(t, "importance", q.label); saveState(); render(); },
+      el("span", { class: "section-label", text: "How important? 1 = low, 7 = very" }),
+      el("div", { class: "seg imp-scale", role: "radiogroup", "aria-label": "Importance from 1 to 7" }, [
+        ...[1, 2, 3, 4, 5, 6, 7].map(n => el("button", {
+          type: "button", role: "radio", "aria-checked": String(t.importance === n),
+          class: t.importance === n ? "active" : "", style: { "--c": importanceColor(n) }, text: String(n),
+          title: n === 1 ? "1: barely matters" : n === 7 ? "7: very important" : `${n} of 7`,
+          onclick: () => { t.importance = n; logEvent(t, "importance", `${n} of 7`); saveState(); render(); },
         })),
-        el("button", { type: "button", class: t.quadrant ? "" : "active", text: "Not sure", onclick: () => { t.quadrant = null; logEvent(t, "importance", "Not sure"); saveState(); render(); } }),
+        el("button", { type: "button", class: `not-set ${t.importance ? "" : "active"}`, text: "Not set",
+          onclick: () => { t.importance = null; logEvent(t, "importance", "not set"); saveState(); render(); } }),
       ]),
+      t.importance ? null : el("div", { class: "hint", style: { margin: "6px 0 0" }, text: `Not set yet, so it counts as ${importanceOf(t)}.` }),
     ]),
     el("div", { class: "due-grid" }, [
       el("div", {}, [
@@ -4298,7 +4415,7 @@ function homeEditor(t) {
       el("button", {
         class: `btn btn-sm ${blocked.length ? "" : "btn-good"}`, type: "button",
         html: `${blocked.length ? "🔒" : "⚔"}<span>Slice it (done)</span>`,
-        title: blocked.length ? `Finish “${blocked[0].text}” first` : "Mark done. Tip: hold right-click on a bubble to slice it.",
+        title: blocked.length ? `Finish “${blocked[0].text}” first` : "Mark done. Tip: hold down on a bubble to slice it.",
         onclick: (e) => sliceTask(t, e.currentTarget),
       }),
       el("button", { class: "btn btn-sm btn-dark", type: "button", text: "Close", onclick: () => { _openFor = null; render(); } }),
@@ -4313,7 +4430,7 @@ function homeRow(t) {
   const open = _openFor === t.id;
   const q = qInfo(t.quadrant);
   const stepsLeft = (t.steps || []).filter(s => !s.done).length;
-  return el("div", { class: `home-row ${open ? "open" : ""} ${isBlocked(t) ? "blocked" : ""}`, style: { "--c": q ? q.color : "var(--line)" } }, [
+  return el("div", { class: `home-row ${open ? "open" : ""} ${isBlocked(t) ? "blocked" : ""}`, style: { "--c": t.importance || q ? importanceColor(importanceOf(t)) : "var(--line)" } }, [
     el("div", { class: "home-row-top" }, [
       el("span", {
         class: "check-circle", role: "checkbox", "aria-checked": "false", tabindex: "0",
@@ -4326,7 +4443,7 @@ function homeRow(t) {
       blockedBadge(t),
       ...tagBadges(t),
       t.steps?.length ? el("span", { class: "badge", text: stepsLeft ? `${stepsLeft} of ${t.steps.length} parts left` : "Parts done" }) : null,
-      q ? badgeFor(t) : null,
+      importanceBadge(t),
       el("button", {
         class: "icon-btn", type: "button", html: SVG.edit,
         title: "Edit: importance, due, details, tags, links, sub-bubbles", "aria-label": "Edit", "aria-expanded": String(open),
@@ -4354,7 +4471,7 @@ function renderHome() {
         : "The most important and most urgent things come first." }),
     ]),
   ]);
-  const input = taskInput("home-input", "Add a to-do… use #tags like #friends", (text) => addTask(text));
+  const input = taskInput("home-input", "Add a to-do… #friends for a tag, !6 for importance", (text) => addTask(text));
   input.classList.add("home-input");
   wrap.appendChild(input);
 
@@ -4406,7 +4523,7 @@ function renderHome() {
     setTimeout(() => { if (!jar.w) jarResize(); else syncJar(); startJar(); }, 0);
     const t = _openFor && taskById(_openFor);
     if (t && !t.done) {
-      wrap.appendChild(el("div", { class: "home-row open jar-editor", style: { "--c": qInfo(t.quadrant)?.color || "var(--line)" } }, [
+      wrap.appendChild(el("div", { class: "home-row open jar-editor", style: { "--c": importanceColor(importanceOf(t)) } }, [
         el("div", { class: "home-row-top" }, [
           el("span", { class: "up-text", style: { fontWeight: "700" }, text: t.text }),
           el("span", { class: "badge", text: weightReasons(t) }),
@@ -4453,7 +4570,7 @@ function renderHome() {
       el("strong", { text: "Your garden" }),
       el("span", { class: "hint", style: { margin: 0, display: "block" }, text: state.garden.length
         ? `${plural(state.garden.length, "slice")} so far. See your progress and your trees.`
-        : "Slice a to-do (hold right-click on a bubble) to plant your garden." }),
+        : "Slice a to-do (hold down on a bubble) to plant your garden." }),
     ]),
     el("span", { html: ARROW_SVG }),
   ]));
@@ -4619,6 +4736,7 @@ function exportTodos() {
       scheduledTime: t.scheduledTime || "",
       date: t.date || "",
       duration: t.duration || 30,
+      importance: t.importance, inOrder: !!t.inOrder,
       dueDate: t.dueDate || "", dueTime: t.dueTime || "",
       details: t.details || "",
       createdAt: t.createdAt, doneAt: t.doneAt, focusMin: t.focusMin || 0,
