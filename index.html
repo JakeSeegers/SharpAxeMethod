@@ -767,6 +767,16 @@
   .sub-num { min-width: 20px; text-align: center; font-size: 12px; font-weight: 800; color: var(--ink-muted); }
   .sub-row.next .sub-num { color: var(--accent); }
   .icon-btn:disabled { opacity: 0.3; cursor: default; }
+  .repeat-box { display: flex; flex-direction: column; gap: 10px; padding: 12px; background: var(--surface-2); border-radius: 10px; }
+  .repeat-custom { display: flex; flex-direction: column; gap: 8px; }
+  input[type="number"].num-in { width: 64px; padding: 7px 8px; font-size: 13px; border: 1.5px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--ink); }
+  .day-toggles { display: inline-flex; gap: 4px; }
+  .day-toggles button { width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid var(--line); background: var(--surface); color: var(--ink-mid); font-weight: 700; cursor: pointer; }
+  .day-toggles button.on { background: var(--q2); border-color: var(--q2); color: #fff; }
+  .saved-row { margin-top: -8px; }
+  .saved-chip { display: inline-flex; align-items: center; gap: 2px; padding: 2px 6px 2px 2px; border-radius: 99px; border: 1.5px dashed var(--line-strong); background: var(--surface); }
+  .saved-add { border: none; background: transparent; cursor: pointer; font-size: 12.5px; font-weight: 700; color: var(--ink-mid); padding: 3px 6px; }
+  .saved-add:hover { color: var(--accent); }
   .seg.imp-scale button { min-width: 36px; justify-content: center; }
   .seg.imp-scale button.active { background: var(--c); color: #fff; }
   .seg.imp-scale button.not-set.active { background: var(--steel); color: var(--bg); }
@@ -1114,6 +1124,7 @@ const defaultState = () => ({
   reflectAnswers: {},
   reflectNotes: "",
   garden: [],   // every finished ("sliced") to-do; kept across sessions
+  library: [],  // saved to-dos you can add again in one tap
   savedAt: 0,
 });
 
@@ -1137,6 +1148,12 @@ function normalizeTask(t) {
     importance: Number(t.importance) >= 1 && Number(t.importance) <= 7 ? Math.round(Number(t.importance)) : null,
     // Sub-bubbles must be done in order (later parts lock until earlier ones are done).
     inOrder: !!t.inOrder,
+    // Repeats like a calendar event. Each one is its own to-do in a series.
+    repeat: normalizeRepeat(t.repeat),
+    seriesId: t.seriesId ?? null,
+    spawnedNext: t.spawnedNext ?? null,
+    // Hidden until this time, then it pops in (0 = showing now).
+    showAt: Number(t.showAt) || 0,
     // Due date (the deadline). With no time, it is due at the end of that day.
     dueDate: typeof t.dueDate === "string" ? t.dueDate : "",
     dueTime: typeof t.dueTime === "string" ? t.dueTime : "",
@@ -1186,6 +1203,7 @@ function hydrate(parsed, fromV1 = false) {
     triageOrder: Array.isArray(parsed.triageOrder) ? parsed.triageOrder : [],
     blocks: (parsed.blocks || []).map(normalizeBlock),
     garden: Array.isArray(parsed.garden) ? parsed.garden.filter(g => g && g.text) : [],
+    library: Array.isArray(parsed.library) ? parsed.library.filter(x => x && x.text) : [],
   };
   if (fromV1) {
     // v1 had 7 phases: "Just Do It" (5) and "Reflect" (6) moved one step later.
@@ -1403,6 +1421,191 @@ function reopenTask(t) {
   t.doneAt = 0;
   unrecordSlice(t);
   logEvent(t, "reopened");
+  // Reopening a repeat takes back the next one, if it was not touched yet.
+  const next = t.spawnedNext && taskById(t.spawnedNext);
+  if (next && !next.done && !(next.history || []).some(h => h.type !== "created")) {
+    deleteTask(next);
+    t.spawnedNext = null;
+  }
+}
+
+/* ─── REPEATS AND POP-INS ───────────────────────────────────── */
+// A repeat works like a Google Calendar event: every N days, weeks (on some
+// weekdays), months or years; ending never, on a date, or after N times.
+// When you finish one, the next one is made with the next due date.
+const WEEKDAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+function normalizeRepeat(r) {
+  if (!r || !["day", "week", "month", "year"].includes(r.freq)) return null;
+  return {
+    freq: r.freq,
+    every: Math.max(1, Math.min(99, Math.round(Number(r.every) || 1))),
+    days: Array.isArray(r.days) ? [...new Set(r.days.map(Number).filter(d => d >= 0 && d <= 6))].sort((a, b) => a - b) : [],
+    day: Number(r.day) || 0,                  // day of the month to keep (for "31st")
+    ends: ["never", "on", "after"].includes(r.ends) ? r.ends : "never",
+    until: typeof r.until === "string" ? r.until : "",
+    count: Math.max(1, Math.round(Number(r.count) || 10)),
+    lead: r.lead == null || r.lead === "" ? null : Math.max(0, Number(r.lead)), // pop in this many minutes before; null = right away
+    n: Math.max(1, Math.round(Number(r.n) || 1)), // which one in the series this is
+  };
+}
+function addMonthsKeep(d, k, day) {
+  const x = new Date(d.getFullYear(), d.getMonth() + k, 1);
+  const last = new Date(x.getFullYear(), x.getMonth() + 1, 0).getDate();
+  x.setDate(Math.min(day || d.getDate(), last));
+  return x;
+}
+const weekStart = (d) => { const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() - x.getDay()); return x; };
+function stepRepeat(d, r) {
+  switch (r.freq) {
+    case "day": return addDays(d, r.every);
+    case "week": {
+      if (!r.days.length) return addDays(d, 7 * r.every);
+      let x = addDays(d, 1);
+      for (let i = 0; i < 7 * (r.every + 1); i++, x = addDays(x, 1)) {
+        const weeks = Math.round((weekStart(x) - weekStart(d)) / (7 * 86400e3));
+        if (weeks % r.every === 0 && r.days.includes(x.getDay())) return x;
+      }
+      return addDays(d, 7 * r.every);
+    }
+    case "month": return addMonthsKeep(d, r.every, r.day);
+    case "year": return addMonthsKeep(d, 12 * r.every, r.day);
+  }
+  return addDays(d, 1);
+}
+// The next due date after this one. Missed ones are skipped, so they do not pile up.
+function nextRepeatDate(t) {
+  const r = t.repeat;
+  if (!r) return null;
+  if (r.ends === "after" && r.n >= r.count) return null;
+  const today = at(todayISO());
+  let d = at(t.dueDate || todayISO());
+  for (let i = 0; i < 1000; i++) { d = stepRepeat(d, r); if (d >= today) break; }
+  const iso = isoOf(d);
+  if (r.ends === "on" && r.until && iso > r.until) return null;
+  return iso;
+}
+// When a to-do in a series appears: right away, or some minutes before it is due.
+function popTimeFor(t) {
+  const r = t.repeat;
+  if (!r || r.lead == null || !t.dueDate) return 0;
+  const base = at(t.dueDate, t.dueTime || "00:00").getTime() - r.lead * 60000;
+  return base > Date.now() ? base : 0;
+}
+const isShown = (t) => !t.showAt || t.showAt <= Date.now();
+function repeatText(r, t) {
+  if (!r) return "";
+  const n = r.every;
+  const unit = (one, many) => n === 1 ? one : `${n} ${many}`;
+  let txt;
+  if (r.freq === "day") txt = `Every ${unit("day", "days")}`;
+  else if (r.freq === "week") {
+    const wk = r.days.join() === "1,2,3,4,5" && n === 1 ? "Every weekday" : `Every ${unit("week", "weeks")}`;
+    txt = r.days.length && wk !== "Every weekday" ? `${wk} on ${r.days.map(d => WEEKDAY_SHORT[d]).join(", ")}` : wk;
+  } else if (r.freq === "month") txt = `Every ${unit("month", "months")} on day ${r.day || at(t?.dueDate || todayISO()).getDate()}`;
+  else txt = `Every ${unit("year", "years")}`;
+  if (r.ends === "on" && r.until) txt += ` · until ${at(r.until).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`;
+  if (r.ends === "after") txt += ` · ${r.n} of ${r.count}`;
+  return txt;
+}
+function repeatShort(r) {
+  const n = r.every;
+  if (r.freq === "day") return n === 1 ? "daily" : `every ${n} days`;
+  if (r.freq === "week") return r.days.join() === "1,2,3,4,5" && n === 1 ? "weekdays" : n === 1 ? "weekly" : `every ${n} weeks`;
+  if (r.freq === "month") return n === 1 ? "monthly" : `every ${n} months`;
+  return n === 1 ? "yearly" : `every ${n} years`;
+}
+function repeatBadge(t) {
+  return t.repeat ? el("span", { class: "badge", style: { "--c": "var(--q2)" }, title: repeatText(t.repeat, t), text: `↻ ${repeatShort(t.repeat)}` }) : null;
+}
+// Make a fresh copy of a to-do (new id, not done, parts reset).
+function cloneTask(t, extra = {}) {
+  const c = normalizeTask({
+    ...JSON.parse(JSON.stringify(t)),
+    id: uid(), done: false, doneAt: 0, createdAt: Date.now(), history: [], focusMin: 0,
+    spawnedNext: null, showAt: 0,
+    steps: (t.steps || []).map(s => ({ ...s, id: uid(), done: false, doneAt: 0 })),
+    ...extra,
+  });
+  state.tasks.splice(state.tasks.indexOf(t) + 1, 0, c);
+  return c;
+}
+function spawnNext(t) {
+  const iso = nextRepeatDate(t);
+  if (!iso) { toast("That was the last one in this series."); return null; }
+  const next = cloneTask(t, {
+    dueDate: iso,
+    repeat: { ...t.repeat, n: t.repeat.n + 1 },
+    seriesId: t.seriesId || t.id,
+  });
+  next.showAt = popTimeFor(next);
+  logEvent(next, "created", `next in series (#${next.repeat.n})`);
+  t.spawnedNext = next.id;
+  return next;
+}
+// Skip this one in a series: move it to the next date, nothing is sliced.
+function skipRepeat(t) {
+  const iso = nextRepeatDate(t);
+  if (!iso) { toast("No more in this series. You can delete it instead."); return; }
+  t.dueDate = iso;
+  t.repeat.n += 1;
+  t.showAt = popTimeFor(t);
+  logEvent(t, "skipped", `moved to ${iso}`);
+  saveState(); render();
+  toast(t.showAt ? `Skipped. It pops back in ${new Date(t.showAt).toLocaleString(undefined, { weekday: "short", hour: "numeric", minute: "2-digit" })}.` : `Skipped. Next one is due ${iso}.`);
+}
+function duplicateTask(t) {
+  const c = cloneTask(t, { seriesId: null, repeat: t.repeat ? { ...t.repeat, n: 1 } : null });
+  logEvent(c, "created", `copy of “${t.text}”`);
+  saveState();
+  toast(`Duplicated “${t.text}”.`);
+  return c;
+}
+// Hide a to-do until a date and time; it pops back in then.
+function snoozeTask(t, when) {
+  t.showAt = when.getTime();
+  logEvent(t, "snoozed", `until ${when.toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`);
+  if (_openFor === t.id) _openFor = null;
+  saveState(); render();
+  toast(`Hidden until ${when.toLocaleString(undefined, { weekday: "short", hour: "numeric", minute: "2-digit" })}. It will pop back in.`);
+}
+function checkPopIns() {
+  const now = Date.now();
+  const popped = state.tasks.filter(t => !t.done && t.showAt && t.showAt <= now);
+  if (!popped.length) return;
+  popped.forEach(t => { t.showAt = 0; logEvent(t, "popped in"); });
+  saveState();
+  toast(`Popped in: ${popped.map(t => t.text).join(", ")}`);
+  if (_view !== "home") return;
+  const a = document.activeElement;
+  if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) syncJar(); else render();
+}
+
+/* ─── SAVED TO-DOS (a small library you can add from) ───────── */
+function saveToLibrary(t) {
+  const item = {
+    id: uid(), text: t.text, importance: t.importance, tags: [...(t.tags || [])], duration: t.duration,
+    details: t.details || "", inOrder: !!t.inOrder,
+    repeat: t.repeat ? { ...t.repeat, n: 1 } : null, dueTime: t.dueTime || "",
+    steps: (t.steps || []).map(s => ({ text: s.text, duration: s.duration, details: s.details || "" })),
+    savedAt: Date.now(),
+  };
+  const i = state.library.findIndex(x => x.text.toLowerCase() === t.text.toLowerCase());
+  if (i >= 0) state.library[i] = item; else state.library.push(item);
+  saveState();
+  toast(i >= 0 ? `Updated “${t.text}” in your saved to-dos.` : `Saved “${t.text}”. Add it again any time from the Saved row.`);
+}
+function addFromLibrary(item) {
+  const t = normalizeTask({
+    text: item.text, importance: item.importance, tags: item.tags, duration: item.duration,
+    details: item.details, inOrder: item.inOrder, repeat: item.repeat, dueTime: item.dueTime,
+    dueDate: item.repeat ? todayISO() : "",
+    steps: (item.steps || []).map(s => normalizeStep(s)),
+  });
+  if (t.repeat && t.repeat.freq === "week" && !t.repeat.days.length) t.repeat.days = [at(t.dueDate).getDay()];
+  logEvent(t, "created", "from your saved to-dos");
+  state.tasks.push(t);
+  saveState(); render();
+  toast(`Added “${t.text}”.`);
 }
 
 /* ─── BLOCKED TIME + BUCKETS ────────────────────────────────── */
@@ -2326,7 +2529,7 @@ const PRAISE = [
 const timer = { total: 15 * 60, left: 15 * 60, running: false, endAt: 0, iv: 0 };
 
 function triageList() {
-  const remaining = state.tasks.filter(t => !t.done && t.quadrant !== "q4");
+  const remaining = state.tasks.filter(t => !t.done && t.quadrant !== "q4" && isShown(t));
   const ids = new Set(remaining.map(t => t.id));
   const order = state.triageOrder.filter(id => ids.has(id));
   const seen = new Set(order);
@@ -2353,7 +2556,9 @@ function completeTask(task, fromEl) {
   recordSlice(task);
   celebrate(fromEl);
   const unlocked = waiting.filter(t => !isBlocked(t));
-  toast(unlocked.length ? `Done! Unlocked: ${unlocked.map(t => t.text).join(", ")}` : PRAISE[Math.floor(Math.random() * PRAISE.length)]);
+  const next = task.repeat ? spawnNext(task) : null;
+  const nextNote = next ? ` Next one: ${at(next.dueDate).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}${next.showAt ? " (it pops in later)" : ""}.` : "";
+  toast((unlocked.length ? `Done! Unlocked: ${unlocked.map(t => t.text).join(", ")}.` : PRAISE[Math.floor(Math.random() * PRAISE.length)]) + nextNote);
   if (_stepsOpenFor === task.id) _stepsOpenFor = null;
   resetTimer();
   saveState(); render();
@@ -3146,7 +3351,7 @@ function syncJar() {
   if (!jar.engine || !jar.w) return;
   const { Body, Composite, Constraint } = Matter;
   const world = jar.engine.world;
-  const tasks = state.tasks.filter(t => !t.done);
+  const tasks = state.tasks.filter(t => !t.done && isShown(t));
   const ids = new Set(tasks.map(t => t.id));
 
   for (const [id, b] of jar.bodies) {
@@ -3319,6 +3524,7 @@ function updateJarTip() {
     !h.sub && (t.tags || []).length ? el("div", { text: t.tags.map(x => `#${x}`).join(" ") }) : null,
     !h.sub && waitingOn(t).length ? el("div", { text: `🔒 Finish first: ${waitingOn(t).map(x => x.text).join(", ")}` }) : null,
     x.details ? el("div", { class: "tip-dim", text: x.details.length > 90 ? x.details.slice(0, 90) + "…" : x.details }) : null,
+    !h.sub && t.repeat ? el("div", { text: `↻ ${repeatText(t.repeat, t)}` }) : null,
     el("div", { class: "tip-dim", text: "Hold down on it to slice" }),
   );
   jar.tip.style.left = `${Math.max(4, Math.min(h.p.x + 14, jar.w - 250))}px`;
@@ -3396,11 +3602,14 @@ function openJarMenu(hit, p) {
   ] : [
     item(isBlocked(t) ? "🔒 Slice (done)" : "⚔ Slice (done)", () => doSlice(hit, -0.3)),
     item("Edit", () => { _openFor = t.id; _stepsOpenFor = t.id; render(); setTimeout(() => $(".jar-editor")?.scrollIntoView({ block: "nearest" }), 0); }),
+    item("Duplicate", () => { duplicateTask(t); render(); }),
+    item("Save for later", () => saveToLibrary(t)),
+    t.repeat ? item("↻ Skip this one", () => skipRepeat(t)) : null,
     item("Link from here", () => { _tool = "link"; _linkFrom = t.id; render(); toast(`Now tap the to-do that waits for “${t.text}”.`); }),
     item("Delete", () => { deleteTask(t); if (_openFor === t.id) _openFor = null; saveState(); render(); }, "danger"),
-  ]));
+  ].filter(Boolean)));
   jar.menu.style.left = `${Math.min(p.x, jar.w - 180)}px`;
-  jar.menu.style.top = `${Math.min(p.y, jar.h - 180)}px`;
+  jar.menu.style.top = `${Math.min(p.y, jar.h - 270)}px`;
   jar.menu.classList.add("open");
   jar.menu.querySelector("button")?.focus();
 }
@@ -4349,7 +4558,8 @@ const HISTORY_LABEL = {
   created: "Created", "importance": "Importance", "due changed": "Due date", "takes about": "Takes about",
   tags: "Tags", details: "Details edited", "sub added": "Sub-bubble added", "sub removed": "Sub-bubble removed",
   "sub sliced": "Sub-bubble sliced", "sub reopened": "Sub-bubble reopened", "sub moved": "Sub-bubble moved", "in order": "In order", linked: "Linked", sliced: "Sliced (done)",
-  reopened: "Reopened", renamed: "Renamed",
+  reopened: "Reopened", renamed: "Renamed", repeat: "Repeat", skipped: "Skipped", snoozed: "Hidden",
+  "popped in": "Popped in",
 };
 function historyBlock(t) {
   const items = (t.history || []).slice().reverse();
@@ -4399,6 +4609,7 @@ function homeEditor(t) {
       ]),
     ]),
     dueLine(t),
+    repeatEditor(t),
     el("div", {}, [
       el("span", { class: "section-label", text: "Details" }),
       details,
@@ -4419,9 +4630,111 @@ function homeEditor(t) {
         onclick: (e) => sliceTask(t, e.currentTarget),
       }),
       el("button", { class: "btn btn-sm btn-dark", type: "button", text: "Close", onclick: () => { _openFor = null; render(); } }),
+      el("button", { class: "btn btn-sm", type: "button", html: `${SVG.copy}<span>Duplicate</span>`,
+        onclick: () => { const c = duplicateTask(t); _openFor = c.id; render(); } }),
+      el("button", { class: "btn btn-sm", type: "button", html: `${SVG.save}<span>Save for later</span>`,
+        title: "Keep a copy in your Saved row, so you can add it again in one tap", onclick: () => { saveToLibrary(t); render(); } }),
+      t.repeat ? el("button", { class: "btn btn-sm btn-ghost", type: "button", text: "↻ Skip this one", onclick: () => skipRepeat(t) }) : null,
       el("button", { class: "btn btn-sm btn-ghost", type: "button", html: `${SVG.trash}<span>Delete</span>`, onclick: () => {
         deleteTask(t); _openFor = null; saveState(); render();
       } }),
+    ]),
+  ]);
+}
+
+/* ---- repeat and pop-in editor ---- */
+const REPEAT_PRESETS = [
+  ["none", "Does not repeat"], ["day", "Every day"], ["weekday", "Every weekday (Mon–Fri)"],
+  ["week", "Every week"], ["month", "Every month"], ["year", "Every year"], ["custom", "Custom…"],
+];
+const LEAD_OPTIONS = [["", "Right away"], ["0", "On the due day"], ["60", "1 hour before"], ["1440", "1 day before"], ["2880", "2 days before"], ["10080", "1 week before"]];
+let _customRepeatFor = null;
+function presetOf(r) {
+  if (!r) return "none";
+  if (r.every !== 1 || r.ends !== "never") return "custom";
+  if (r.freq === "day") return "day";
+  if (r.freq === "week") return r.days.join() === "1,2,3,4,5" ? "weekday" : r.days.length <= 1 ? "week" : "custom";
+  return r.freq;
+}
+function repeatEditor(t) {
+  const ensureDue = () => {
+    if (!t.dueDate) { t.dueDate = todayISO(); toast("A repeat needs a start date, so it is due today. Change the date any time."); }
+  };
+  const setRepeat = (r) => {
+    t.repeat = r ? normalizeRepeat({ ...r, n: t.repeat?.n || 1, lead: t.repeat?.lead ?? null, day: at(t.dueDate || todayISO()).getDate() }) : null;
+    logEvent(t, "repeat", t.repeat ? repeatText(t.repeat, t) : "off");
+    saveState(); render();
+  };
+  const preset = _customRepeatFor === t.id ? "custom" : presetOf(t.repeat);
+  const sel = el("select", { "aria-label": "Repeat", onchange: (e) => {
+    const v = e.target.value;
+    _customRepeatFor = v === "custom" ? t.id : null;
+    if (v === "none") return setRepeat(null);
+    ensureDue();
+    const wd = at(t.dueDate).getDay();
+    if (v === "day") setRepeat({ freq: "day", every: 1 });
+    else if (v === "weekday") setRepeat({ freq: "week", every: 1, days: [1, 2, 3, 4, 5] });
+    else if (v === "week") setRepeat({ freq: "week", every: 1, days: [wd] });
+    else if (v === "month") setRepeat({ freq: "month", every: 1 });
+    else if (v === "year") setRepeat({ freq: "year", every: 1 });
+    else setRepeat(t.repeat || { freq: "week", every: 1, days: [wd] });
+  } }, REPEAT_PRESETS.map(([v, l]) => el("option", { value: v, text: l })));
+  sel.value = preset;
+
+  const r = t.repeat;
+  const custom = r && preset === "custom" ? (() => {
+    const upd = (patch) => setRepeat({ ...r, ...patch });
+    const every = el("input", { type: "number", min: "1", max: "99", value: String(r.every), class: "num-in", "aria-label": "Repeat every",
+      onchange: (e) => upd({ every: e.target.value }) });
+    const unit = el("select", { "aria-label": "Unit", onchange: (e) => upd({ freq: e.target.value, days: e.target.value === "week" ? (r.days.length ? r.days : [at(t.dueDate).getDay()]) : [] }) },
+      [["day", "days"], ["week", "weeks"], ["month", "months"], ["year", "years"]].map(([v, l]) => el("option", { value: v, text: l })));
+    unit.value = r.freq;
+    const days = r.freq === "week" ? el("div", { class: "day-toggles" }, WEEKDAY_SHORT.map((d, i) => el("button", {
+      type: "button", class: r.days.includes(i) ? "on" : "", text: d[0], title: d, "aria-pressed": String(r.days.includes(i)),
+      onclick: () => { const set = new Set(r.days); set.has(i) ? set.delete(i) : set.add(i); if (!set.size) set.add(i); upd({ days: [...set] }); },
+    }))) : null;
+    const ends = el("select", { "aria-label": "Ends", onchange: (e) => upd({ ends: e.target.value, until: r.until || isoOf(addDays(new Date(), 30)) }) },
+      [["never", "Never ends"], ["on", "Ends on"], ["after", "Ends after"]].map(([v, l]) => el("option", { value: v, text: l })));
+    ends.value = r.ends;
+    return el("div", { class: "repeat-custom" }, [
+      el("div", { class: "controls" }, [el("span", { class: "mini-label", text: "Every" }), every, unit, days]),
+      el("div", { class: "controls" }, [
+        ends,
+        r.ends === "on" ? el("input", { type: "date", "aria-label": "Ends on", value: r.until, onchange: (e) => upd({ until: e.target.value }) }) : null,
+        r.ends === "after" ? el("input", { type: "number", min: "1", max: "999", class: "num-in", value: String(r.count), "aria-label": "Number of times", onchange: (e) => upd({ count: e.target.value }) }) : null,
+        r.ends === "after" ? el("span", { class: "hint", style: { margin: 0 }, text: "times" }) : null,
+      ]),
+    ]);
+  })() : null;
+
+  const lead = r ? el("select", { "aria-label": "Pops in", onchange: (e) => {
+    r.lead = e.target.value === "" ? null : Number(e.target.value);
+    logEvent(t, "repeat", `next ones pop in: ${e.target.selectedOptions[0].text.toLowerCase()}`);
+    saveState(); render();
+  } }, LEAD_OPTIONS.map(([v, l]) => el("option", { value: v, text: l }))) : null;
+  if (lead) lead.value = r.lead == null ? "" : String(r.lead);
+
+  // Snooze: hide this one until a set time.
+  const snoozeDate = el("input", { type: "date", "aria-label": "Pop back in on", value: isoOf(addDays(new Date(), 1)) });
+  const snoozeTime = el("input", { type: "time", "aria-label": "Pop back in at", value: "09:00" });
+  return el("div", { class: "repeat-box" }, [
+    el("div", { class: "due-grid" }, [
+      el("div", {}, [el("span", { class: "section-label", text: "Repeat" }), el("div", { class: "controls" }, [sel])]),
+      r ? el("div", {}, [el("span", { class: "section-label", text: "Next ones pop in" }), el("div", { class: "controls" }, [lead])]) : null,
+    ]),
+    custom,
+    r ? el("div", { class: "hint", style: { margin: 0 }, text: `${repeatText(r, t)}. When you slice this one, the next one is made${r.lead == null ? " and shows right away" : ", and it pops in " + LEAD_OPTIONS.find(([v]) => v === String(r.lead))[1].toLowerCase()}. This is #${r.n}.` }) : null,
+    el("div", {}, [
+      el("span", { class: "section-label", text: "Hide until later" }),
+      el("div", { class: "controls" }, [
+        snoozeDate, snoozeTime,
+        el("button", { class: "btn btn-sm", type: "button", text: "Pop back in then", onclick: () => {
+          if (!snoozeDate.value) return toast("Pick a date", "error");
+          const when = at(snoozeDate.value, snoozeTime.value || "09:00");
+          if (when <= new Date()) return toast("Pick a time in the future", "error");
+          snoozeTask(t, when);
+        } }),
+      ]),
     ]),
   ]);
 }
@@ -4440,6 +4753,7 @@ function homeRow(t) {
       }),
       el("span", { class: "up-text", text: t.text }),
       dueBadge(t),
+      repeatBadge(t),
       blockedBadge(t),
       ...tagBadges(t),
       t.steps?.length ? el("span", { class: "badge", text: stepsLeft ? `${stepsLeft} of ${t.steps.length} parts left` : "Parts done" }) : null,
@@ -4474,8 +4788,20 @@ function renderHome() {
   const input = taskInput("home-input", "Add a to-do… #friends for a tag, !6 for importance", (text) => addTask(text));
   input.classList.add("home-input");
   wrap.appendChild(input);
+  if (state.library.length) {
+    wrap.appendChild(el("div", { class: "tag-row saved-row" }, [
+      el("span", { class: "hint", style: { margin: 0 }, text: "Saved:" }),
+      ...state.library.slice(-14).map(item => el("span", { class: "saved-chip" }, [
+        el("button", { type: "button", class: "saved-add", title: `Add “${item.text}” again`, text: `+ ${item.text}${item.repeat ? " ↻" : ""}`, onclick: () => addFromLibrary(item) }),
+        el("button", { type: "button", class: "badge-x", "aria-label": `Remove “${item.text}” from saved`, html: SVG.x, onclick: () => {
+          if (!confirm(`Remove “${item.text}” from your saved to-dos?`)) return;
+          state.library = state.library.filter(x => x.id !== item.id); saveState(); render();
+        } }),
+      ])),
+    ]));
+  }
 
-  const open = state.tasks.filter(t => !t.done).sort(homeCompare);
+  const open = state.tasks.filter(t => !t.done && isShown(t)).sort(homeCompare);
   const tags = tagNames().filter(n => open.some(t => hasTag(t, n)));
   if (_groupTag && !tags.some(n => sameBucket(n, _groupTag))) _groupTag = "";
 
@@ -4540,6 +4866,20 @@ function renderHome() {
       shown.forEach(t => list.appendChild(homeRow(t)));
       wrap.appendChild(list);
     }
+  }
+
+  // Hidden for now: they pop in later.
+  const later = state.tasks.filter(t => !t.done && !isShown(t)).sort((a, b) => a.showAt - b.showAt);
+  if (later.length) {
+    wrap.appendChild(el("div", { class: "section" }, [
+      el("span", { class: "section-label", text: `Coming up (${later.length})` }),
+      el("div", { class: "task-list" }, later.map(t => el("div", { class: "up-row" }, [
+        el("span", { class: "up-text", text: t.text }),
+        repeatBadge(t),
+        el("span", { class: "badge calm", text: `Pops in ${new Date(t.showAt).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}` }),
+        el("button", { class: "btn btn-sm btn-ghost", type: "button", text: "Show now", onclick: () => { t.showAt = 0; logEvent(t, "popped in", "early"); saveState(); render(); } }),
+      ]))),
+    ]));
   }
 
   const doneTasks = state.tasks.filter(t => t.done);
@@ -4678,7 +5018,8 @@ function render(animate = false) {
     nextBtn.querySelector("svg").outerHTML = SVG.refresh;
     nextBtn.onclick = () => {
       if (confirm("Reset and start a new session? Your current session will be cleared from this browser. (Use Save Session first if you want a copy.)")) {
-        state = { ...defaultState(), garden: state.garden };
+        const keep = state.tasks.filter(t => t.repeat && !t.done);
+        state = { ...defaultState(), garden: state.garden, library: state.library, tasks: keep };
         saveState(); render(true);
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
@@ -4737,6 +5078,7 @@ function exportTodos() {
       date: t.date || "",
       duration: t.duration || 30,
       importance: t.importance, inOrder: !!t.inOrder,
+      repeat: t.repeat, showAt: t.showAt || 0,
       dueDate: t.dueDate || "", dueTime: t.dueTime || "",
       details: t.details || "",
       createdAt: t.createdAt, doneAt: t.doneAt, focusMin: t.focusMin || 0,
@@ -5133,6 +5475,8 @@ setInterval(() => {
 }, 60000);
 
 if (drive.on && driveTokenOk()) driveCheckNewer().catch(() => {});
+setInterval(checkPopIns, 15000);
+checkPopIns();
 </script>
 
 </body>
