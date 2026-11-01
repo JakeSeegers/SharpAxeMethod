@@ -39,7 +39,7 @@ Google sign-in does not work when you open `index.html` as a file. Use the web a
 1. Open the app. Open the **⋯** menu and select **Google Drive**.
 2. Paste the Client ID when the app asks. Then allow access.
 
-You can also put the Client ID in `index.html`, in `const GOOGLE_CLIENT_ID = ""`. Then the app does not ask. The Client ID is not a secret.
+The Client ID for this project is already in `index.html` (`const GOOGLE_CLIENT_ID`), so the app does not ask for it. The Client ID is not a secret.
 
 ## How it works
 
