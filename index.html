@@ -718,11 +718,13 @@
   .jar canvas { display: block; width: 100%; height: 100%; }
   .jar-tip {
     position: absolute; z-index: 5; pointer-events: none; opacity: 0;
-    max-width: 230px; padding: 8px 10px; border-radius: 8px;
+    max-width: 250px; padding: 8px 10px; border-radius: 8px;
     background: var(--ink); color: var(--bg); font-size: 12.5px; line-height: 1.4;
     transition: opacity 0.12s ease;
   }
   .jar-tip strong { display: block; font-size: 13.5px; }
+  .jar-tip .tip-due { font-weight: 700; font-variant-numeric: tabular-nums; margin: 2px 0; }
+  .jar-tip .tip-dim { opacity: 0.7; }
   .jar-menu {
     position: absolute; z-index: 6; display: none; min-width: 160px;
     background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
@@ -748,6 +750,46 @@
   .home-row.blocked .up-text { color: var(--ink-muted); }
   .badge-x { border: none; background: none; color: inherit; cursor: pointer; padding: 0 0 0 2px; display: inline-flex; vertical-align: middle; }
   .badge-x svg { width: 11px; height: 11px; }
+
+  /* ─── EDITOR: DUE, DETAILS, SUB-BUBBLES, HISTORY ────────────────── */
+  .due-grid { display: flex; gap: 18px; flex-wrap: wrap; }
+  .due-line { margin-top: -4px; }
+  .details-box { min-height: 90px; font-size: 14px; }
+  .mini-label { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-muted); }
+  .subs { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+  .sub-row { background: var(--surface-2); border-radius: 9px; padding: 7px 9px; }
+  .sub-top { display: flex; align-items: center; gap: 8px; }
+  .sub-top .check-circle { width: 20px; height: 20px; border-radius: 50%; cursor: pointer; }
+  .sub-row.done .check-circle { background: var(--good); border-color: var(--good); color: #fff; }
+  .sub-row.done .sub-text { text-decoration: line-through; color: var(--ink-muted); }
+  input[type="text"].sub-text { flex: 1; min-width: 0; border: none; background: transparent; padding: 3px 0; font-size: 14px; box-shadow: none; }
+  .sub-more { display: flex; flex-direction: column; gap: 8px; padding: 8px 0 2px 28px; }
+  .sub-details { min-height: 60px; font-size: 13px; }
+  .history summary { cursor: pointer; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-muted); }
+  .history-list { list-style: none; margin-top: 8px; display: flex; flex-direction: column; gap: 4px; max-height: 220px; overflow: auto; }
+  .history-list li { display: flex; gap: 10px; font-size: 13px; color: var(--ink-mid); }
+  .history-when { flex: 0 0 120px; color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+
+  /* ─── GARDEN ───────────────────────────────────────────────────── */
+  .garden-jar { height: clamp(400px, 64vh, 680px); }
+  .garden-stats { flex-wrap: wrap; }
+  .day-bars { display: grid; grid-template-columns: repeat(14, 1fr); gap: 6px; height: 120px; align-items: end; }
+  .day-bar { height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 4px; font-size: 11px; color: var(--ink-muted); }
+  .day-bar-fill { width: 100%; min-height: 3px; background: var(--good); border-radius: 5px 5px 2px 2px; opacity: 0.8; }
+  .tree-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tag-bar { display: grid; grid-template-columns: 110px 1fr 30px; gap: 10px; align-items: center; font-size: 13px; margin-bottom: 6px; }
+  .tag-bar .fill-track div { background: var(--bucket); }
+  .slice-row { background: var(--surface); border: 1.5px solid var(--line); border-radius: 9px; padding: 9px 12px; }
+  .slice-row summary { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; cursor: pointer; }
+  .slice-more { padding: 10px 0 2px; font-size: 14px; color: var(--ink-mid); display: flex; flex-direction: column; gap: 8px; }
+  .garden-link {
+    width: 100%; margin-top: 18px; display: flex; align-items: center; gap: 14px; text-align: left;
+    padding: 14px 18px; border-radius: 11px; cursor: pointer;
+    background: var(--good-soft); border: 1.5px solid color-mix(in srgb, var(--good) 30%, transparent); color: var(--ink);
+  }
+  .garden-link strong { font-family: var(--head); font-size: 17px; }
+  .garden-link > span:nth-child(2) { flex: 1; }
+  .garden-link-icon { font-size: 26px; }
 
   /* ─── TIP CALLOUT ───────────────────────────────────────────────── */
   .tip {
@@ -881,6 +923,14 @@
           <span>
             Save Full Session
             <span class="menu-item-sub">Download everything as .txt</span>
+          </span>
+        </button>
+        <div class="menu-divider"></div>
+        <button class="menu-item" id="miGarden" role="menuitem">
+          <span style="width:18px;text-align:center">🌱</span>
+          <span>
+            Garden
+            <span class="menu-item-sub">Your sliced to-dos and progress</span>
           </span>
         </button>
         <div class="menu-divider"></div>
@@ -1039,6 +1089,9 @@ const QUADRANT_IDS = QUADRANTS.map(q => q.id);
 const qInfo = (id) => QUADRANTS.find(q => q.id === id);
 
 /* ─── STATE ─────────────────────────────────────────────────── */
+let _uidSeq = 0;
+const uid = () => Date.now() * 100 + (_uidSeq++ % 100);
+
 const defaultState = () => ({
   phase: 0,
   checklistItems: {
@@ -1052,6 +1105,7 @@ const defaultState = () => ({
   blocks: [],
   reflectAnswers: {},
   reflectNotes: "",
+  garden: [],   // every finished ("sliced") to-do; kept across sessions
   savedAt: 0,
 });
 
@@ -1071,9 +1125,31 @@ function normalizeTask(t) {
       .filter(x => typeof x === "string" && x.trim()).map(x => x.trim()))],
     // Ids of tasks that must be finished before this one.
     after: Array.isArray(t.after) ? t.after.filter(x => x != null && x !== t.id) : [],
+    // Due date (the deadline). With no time, it is due at the end of that day.
+    dueDate: typeof t.dueDate === "string" ? t.dueDate : "",
+    dueTime: typeof t.dueTime === "string" ? t.dueTime : "",
+    details: typeof t.details === "string" ? t.details : "",
+    createdAt: Number(t.createdAt) || Date.now(),
+    doneAt: Number(t.doneAt) || 0,
+    focusMin: Number(t.focusMin) || 0,
+    history: Array.isArray(t.history) ? t.history.filter(h => h && h.type).slice(-100) : [],
+    // Sub-bubbles (they used to be called tiny steps).
     steps: Array.isArray(t.steps)
-      ? t.steps.filter(s => s && typeof s.text === "string").map(s => ({ id: s.id || uid(), text: s.text, done: !!s.done }))
+      ? t.steps.filter(s => s && typeof s.text === "string").map(normalizeStep)
       : [],
+  };
+}
+
+function normalizeStep(s) {
+  return {
+    id: s.id || uid(),
+    text: s.text,
+    done: !!s.done,
+    dueDate: typeof s.dueDate === "string" ? s.dueDate : "",
+    dueTime: typeof s.dueTime === "string" ? s.dueTime : "",
+    duration: Number(s.duration) || 15,
+    details: typeof s.details === "string" ? s.details : "",
+    doneAt: Number(s.doneAt) || 0,
   };
 }
 
@@ -1097,6 +1173,7 @@ function hydrate(parsed, fromV1 = false) {
     tasks: (parsed.tasks || []).map(normalizeTask),
     triageOrder: Array.isArray(parsed.triageOrder) ? parsed.triageOrder : [],
     blocks: (parsed.blocks || []).map(normalizeBlock),
+    garden: Array.isArray(parsed.garden) ? parsed.garden.filter(g => g && g.text) : [],
   };
   if (fromV1) {
     // v1 had 7 phases: "Just Do It" (5) and "Reflect" (6) moved one step later.
@@ -1129,8 +1206,6 @@ function saveState() {
 
 /* ─── UTILS ─────────────────────────────────────────────────── */
 const $  = (sel, root = document) => root.querySelector(sel);
-let _uidSeq = 0;
-const uid = () => Date.now() * 100 + (_uidSeq++ % 100);
 const plural = (n, word) => `${n} ${word}${n !== 1 ? "s" : ""}`;
 const reduceMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
@@ -1224,6 +1299,83 @@ function taskEnd(task) {
   return s ? new Date(s.getTime() + (task.duration || 30) * 60000) : null;
 }
 
+/* ─── DUE DATES ─────────────────────────────────────────────── */
+// Works for to-dos and sub-bubbles. No time means the end of that day.
+const dueAt = (x) => x?.dueDate ? at(x.dueDate, x.dueTime || "23:59") : null;
+function dhms(ms, withSeconds = true) {
+  let s = Math.max(0, Math.floor(ms / 1000));
+  const d = Math.floor(s / 86400); s -= d * 86400;
+  const h = Math.floor(s / 3600); s -= h * 3600;
+  const m = Math.floor(s / 60); s -= m * 60;
+  const parts = [];
+  if (d) parts.push(`${d}d`);
+  if (d || h) parts.push(`${h}h`);
+  parts.push(`${m}m`);
+  if (withSeconds) parts.push(`${String(s).padStart(2, "0")}s`);
+  return parts.join(" ");
+}
+const shortSpan = (ms) => ms >= 86400e3 ? `${Math.floor(ms / 86400e3)}d` : ms >= 3600e3 ? `${Math.floor(ms / 3600e3)}h` : `${Math.max(1, Math.floor(ms / 60000))}m`;
+// Countdown to "overdue". After the deadline it stays gentle.
+function dueInfo(x, now = Date.now()) {
+  const d = dueAt(x);
+  if (!d) return null;
+  const ms = d - now;
+  if (ms > 0) {
+    const cls = ms <= 3600e3 ? "near" : ms <= 86400e3 ? "soon" : "calm";
+    return { cls, past: false, long: `Overdue in ${dhms(ms)}`, short: `Due in ${shortSpan(ms)}` };
+  }
+  return { cls: "past", past: true, long: `Past due · ${shortSpan(-ms)} ago. That's okay.`, short: "Past due" };
+}
+function dueBadge(t) {
+  const i = dueInfo(t);
+  return i ? el("span", { class: `badge ${i.cls}`, "data-due": String(t.id), title: i.long, text: i.short }) : null;
+}
+
+/* ─── HISTORY + GARDEN RECORDS ──────────────────────────────── */
+function logEvent(t, type, detail = "") {
+  if (!t) return;
+  (t.history || (t.history = [])).push({ at: Date.now(), type, detail: String(detail).slice(0, 140) });
+  if (t.history.length > 100) t.history.splice(0, t.history.length - 100);
+}
+const TREES = ["Self-confidence", "Skill", "Grit", "Determination"];
+function hashStr(str) {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+// Which tree a slice feeds. Random for now, but the same on every load.
+const treeFor = (key) => TREES[hashStr(String(key)) % TREES.length];
+function recordSlice(t, sub = null) {
+  const x = sub || t, due = dueAt(x), now = Date.now();
+  state.garden.push({
+    id: uid(), taskId: t.id, subId: sub ? sub.id : null,
+    text: x.text, quadrant: t.quadrant, tags: [...(t.tags || [])], isSub: !!sub,
+    slicedAt: now, dueAt: due ? due.getTime() : null, onTime: due ? now <= due.getTime() : null,
+    duration: x.duration || 30, focusMin: sub ? 0 : (t.focusMin || 0), details: x.details || "",
+    tree: treeFor(sub ? `${t.id}:${sub.id}` : t.id),
+  });
+}
+function unrecordSlice(t, sub = null) {
+  for (let i = state.garden.length - 1; i >= 0; i--) {
+    const g = state.garden[i];
+    if (g.taskId === t.id && (g.subId ?? null) === (sub ? sub.id : null)) { state.garden.splice(i, 1); return; }
+  }
+}
+// Finish or reopen a sub-bubble, keeping history and the garden in step.
+function setSubDone(t, s, done) {
+  if (s.done === done) return;
+  s.done = done;
+  s.doneAt = done ? Date.now() : 0;
+  if (done) { recordSlice(t, s); logEvent(t, "sub sliced", s.text); }
+  else { unrecordSlice(t, s); logEvent(t, "sub reopened", s.text); }
+}
+function reopenTask(t) {
+  t.done = false;
+  t.doneAt = 0;
+  unrecordSlice(t);
+  logEvent(t, "reopened");
+}
+
 /* ─── BLOCKED TIME + BUCKETS ────────────────────────────────── */
 function blockOccursOn(b, dateISO) {
   if (!b.date || !b.start || !b.end) return false;
@@ -1283,6 +1435,7 @@ function addLink(first, then) {
   if ((then.after || []).includes(first.id)) { toast("Those are already linked"); return false; }
   if (dependsOn(first, then)) { toast(`That would make a loop: “${first.text}” already waits for “${then.text}”.`, "error"); return false; }
   then.after = [...(then.after || []), first.id];
+  logEvent(then, "linked", `waits for ${first.text}`);
   saveState();
   toast(`“${then.text}” now waits for “${first.text}”.`);
   return true;
@@ -1383,6 +1536,13 @@ function updateCountdowns() {
     n.textContent = t.txt;
     n.className = `badge ${t.cls}`;
   });
+  document.querySelectorAll("[data-due]").forEach(n => {
+    const task = state.tasks.find(t => String(t.id) === n.dataset.due);
+    const i = task && dueInfo(task);
+    if (!i) return;
+    n.textContent = n.dataset.long ? i.long : i.short;
+    n.className = `badge ${i.cls}`;
+  });
   document.querySelectorAll("[data-left]").forEach(n => {
     n.textContent = minutesText((Number(n.dataset.left) - Date.now()) / 60000);
   });
@@ -1468,6 +1628,7 @@ function addTask(text, quadrant = null) {
   }).replace(/\s+/g, " ").trim();
   if (!clean) return null;
   const task = normalizeTask({ text: clean, quadrant, tags });
+  logEvent(task, "created", tags.length ? tags.map(x => `#${x}`).join(" ") : "");
   state.tasks.push(task);
   return task;
 }
@@ -1939,15 +2100,17 @@ function renderSchedule(p) {
       el("div", { class: "schedule-task-top" }, [
         el("span", { class: "schedule-task-num", text: String(i + 1) }),
         el("div", { class: "schedule-task-text", text: task.text }),
+        dueBadge(task),
         badgeFor(task),
       ]),
       el("div", { class: "schedule-controls" }, [
+        el("span", { class: "mini-label", text: "Plan to start" }),
         el("input", {
-          type: "date", "aria-label": "Date", value: task.date || "",
+          type: "date", "aria-label": "Plan to start: date", value: task.date || "",
           oninput: (e) => { task.date = e.target.value; refresh(); },
         }),
         el("input", {
-          type: "time", "aria-label": "Start time", value: task.scheduledTime || "",
+          type: "time", "aria-label": "Plan to start: time", value: task.scheduledTime || "",
           oninput: (e) => { task.scheduledTime = e.target.value; refresh(); },
         }),
         durSel,
@@ -1979,6 +2142,7 @@ function tagsInput(task, onDone) {
       const known = tagNames();
       task.tags = [...new Set(e.target.value.split(/[,#\s]+/).map(x => x.trim()).filter(Boolean)
         .map(x => known.find(n => n.toLowerCase().replace(/\s+/g, "") === x.toLowerCase()) || x))];
+      logEvent(task, "tags", task.tags.map(x => `#${x}`).join(" ") || "none");
       saveState();
       onDone?.();
     },
@@ -2152,6 +2316,9 @@ function completeTask(task, fromEl) {
   if (w.length) { toast(`Finish “${w[0].text}” first. Then this one opens up.`, "error"); return false; }
   const waiting = state.tasks.filter(t => !t.done && t.after?.includes(task.id));
   task.done = true;
+  task.doneAt = Date.now();
+  logEvent(task, "sliced", (() => { const i = dueInfo(task); return i ? (i.past ? "after the due date" : "before the due date") : ""; })());
+  recordSlice(task);
   celebrate(fromEl);
   const unlocked = waiting.filter(t => !isBlocked(t));
   toast(unlocked.length ? `Done! Unlocked: ${unlocked.map(t => t.text).join(", ")}` : PRAISE[Math.floor(Math.random() * PRAISE.length)]);
@@ -2168,6 +2335,15 @@ function fmtTime(sec) {
 
 function timerTick() {
   if (timer.running) {
+    // Focus minutes go to the to-do in the "Right now" card.
+    const now = Date.now();
+    timer.acc = (timer.acc || 0) + (timer.last ? now - timer.last : 0);
+    timer.last = now;
+    while (timer.acc >= 60000) {
+      timer.acc -= 60000;
+      const t = triageList()[0];
+      if (t) { t.focusMin = (t.focusMin || 0) + 1; saveState(); }
+    }
     timer.left = (timer.endAt - Date.now()) / 1000;
     if (timer.left <= 0) {
       timer.left = 0; timer.running = false; clearInterval(timer.iv);
@@ -2186,7 +2362,7 @@ function timerTick() {
 
 function toggleTimer() {
   if (timer.running) {
-    timer.running = false; clearInterval(timer.iv);
+    timer.running = false; clearInterval(timer.iv); timer.last = 0;
   } else {
     if (timer.left <= 0) timer.left = timer.total;
     timer.running = true;
@@ -2199,7 +2375,7 @@ function toggleTimer() {
 
 function resetTimer(minutes) {
   if (minutes) timer.total = minutes * 60;
-  timer.running = false; clearInterval(timer.iv);
+  timer.running = false; clearInterval(timer.iv); timer.last = 0;
   timer.left = timer.total;
   timerTick();
 }
@@ -2255,8 +2431,8 @@ function stepsBlock(task) {
       el("span", {
         class: "check-circle", role: "checkbox", "aria-checked": String(s.done), tabindex: "0",
         html: s.done ? SVG.check : "",
-        onclick: () => { s.done = !s.done; saveState(); render(); },
-        onkeydown: (e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); s.done = !s.done; saveState(); render(); } },
+        onclick: () => { setSubDone(task, s, !s.done); saveState(); render(); },
+        onkeydown: (e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); setSubDone(task, s, !s.done); saveState(); render(); } },
       }),
       el("span", { class: "step-text", text: (i === nextIdx ? "Next: " : "") + s.text }),
       el("button", {
@@ -2269,12 +2445,13 @@ function stepsBlock(task) {
   const add = () => {
     const v = ($(`#${inputId}`)?.value || "").trim();
     if (!v) return;
-    steps.push({ id: uid(), text: v, done: false });
+    steps.push(normalizeStep({ text: v }));
+    logEvent(task, "sub added", v);
     saveState(); render();
     setTimeout(() => $(`#${inputId}`)?.focus(), 0);
   };
   return el("div", {}, [
-    el("span", { class: "section-label", text: "Tiny steps" }),
+    el("span", { class: "section-label", text: "Sub-bubbles (small parts)" }),
     list,
     el("input", {
       type: "text", id: inputId, class: "step-input",
@@ -2318,7 +2495,7 @@ function renderTriage(p) {
     ]));
   } else {
     const task = list[0];
-    const meta = el("div", { class: "focus-meta" }, [badgeFor(task)]);
+    const meta = el("div", { class: "focus-meta" }, [badgeFor(task), dueBadge(task)]);
     const when = whenText(task);
     const soft = timeBadge(task);
     if (soft) meta.appendChild(soft);
@@ -2326,7 +2503,7 @@ function renderTriage(p) {
     tagBadges(task).forEach(b => meta.appendChild(b));
     const lock = blockedBadge(task);
     if (lock) meta.appendChild(lock);
-    if (task.steps?.length) meta.appendChild(el("span", { class: "badge", text: `${task.steps.filter(s => s.done).length}/${task.steps.length} steps` }));
+    if (task.steps?.length) meta.appendChild(el("span", { class: "badge", text: `${task.steps.filter(s => s.done).length}/${task.steps.length} parts` }));
 
     const doneBtn = el("button", {
       class: "btn btn-good btn-lg", type: "button", html: `${SVG.check}<span>Done</span>`,
@@ -2339,7 +2516,7 @@ function renderTriage(p) {
       meta,
       el("div", { class: "focus-grid" }, [
         el("div", { class: "focus-steps" }, [
-          stepsBlock(task) || el("div", { class: "hint", style: { margin: 0 }, text: "Feels too big? Break it into tiny steps. Not in the mood? Set a 5 minute timer and just begin." }),
+          stepsBlock(task) || el("div", { class: "hint", style: { margin: 0 }, text: "Feels too big? Break it into small parts. Not in the mood? Set a 5 minute timer and just begin." }),
         ]),
         timerBlock(),
       ]),
@@ -2449,7 +2626,7 @@ function renderTriage(p) {
         el("span", {
           class: "check-circle", role: "checkbox", "aria-checked": "true", tabindex: "0",
           title: "Not done after all", html: SVG.check,
-          onclick: () => { t.done = false; saveState(); render(); },
+          onclick: () => { reopenTask(t); saveState(); render(); },
         }),
         el("span", { class: "up-text", text: t.text }),
       ])));
@@ -2598,6 +2775,8 @@ let _homeShowDone = false;
 const IMPORTANCE_RANK = { q1: 0, quick: 1, q2: 2 }; // not sorted = 3, Eliminate = 4
 const importanceRank = t => t.quadrant === "q4" ? 4 : (IMPORTANCE_RANK[t.quadrant] ?? 3);
 function dueMs(t) {
+  const d = dueAt(t) || (t.steps || []).filter(s => !s.done).map(dueAt).filter(Boolean).sort((a, b) => a - b)[0];
+  if (d) return d.getTime();
   const s = taskStart(t);
   if (s) return s.getTime();
   return t.date ? at(t.date, "23:59").getTime() : Infinity;
@@ -2614,8 +2793,10 @@ function homeCompare(a, b) {
 // toward the bottom (like real water layers), so each blob sinks until the
 // liquid around it is as dense as the blob. Heavier to-dos (less important,
 // less time-sensitive, longer) settle lower. Size shows time to complete.
-// "Must finish first" links are springs. A tag group pulls itself together
-// (matter-attractors).
+// Long titles make pill shapes. Sub-bubbles float in a pocket inside their
+// parent, in a small physics world of their own that sloshes when the parent
+// moves. "Must finish first" links are springs. A tag group pulls itself
+// together (matter-attractors). Hold right-click on a blob to slice it.
 const HAS_PHYSICS = !!window.Matter;
 if (HAS_PHYSICS && window.MatterAttractors) Matter.use(MatterAttractors);
 const HOME_MODE_KEY = "sharp-axe-home-mode";
@@ -2627,6 +2808,9 @@ let _linkFrom = null;  // Link tool: first task tapped, waiting for the second
 
 const FLUID = 0.001;   // liquid density at the very top of the jar
 const IMPORTANCE_WEIGHT = { q1: 0, quick: 0.2, q2: 0.45, q4: 1 }; // not sorted: 0.6
+// Collision groups: blobs bump blobs and walls; slice pieces only hit walls.
+const CAT_BLOB = 0x0001, CAT_PIECE = 0x0002, CAT_WALL = 0x0004;
+const CHARGE_MS = 800;
 
 // 0 = light (floats up) … 1 = heavy (sinks).
 function weightParts(t, now = Date.now()) {
@@ -2643,12 +2827,10 @@ const fluidAt = (y) => FLUID * (0.6 + Math.max(0, Math.min(1, y / (jar.h || 1)))
 function weightReasons(t) {
   const { w } = weightParts(t);
   const q = qInfo(t.quadrant);
-  const soft = softTime(t);
   return [
     w < 0.35 ? "Floats up" : w < 0.65 ? "Floats in the middle" : "Sinks",
     q ? q.label : "Not sorted",
-    soft ? soft.txt : (t.date ? whenText(t) : "No date"),
-    durLabel(t.duration || 30),
+    `takes about ${durLabel(t.duration || 30)}`,
   ].join(" · ");
 }
 
@@ -2657,7 +2839,9 @@ const jar = {
   w: 0, h: 0, dpr: 1, scale: 1,
   bodies: new Map(),   // task id → body
   links: new Map(),    // "firstId>thenId" → spring
-  walls: [], drag: null, down: null, linkLine: null, pops: [],
+  walls: [], drag: null, down: null, linkLine: null,
+  pops: [], fizz: [], drops: [], pieces: [], flashes: [], sparks: [],
+  hover: null, charge: null, slicing: new Set(),
   raf: 0, placed: false, colors: {},
 };
 
@@ -2670,6 +2854,13 @@ function ensureJar() {
     const g = jar.engine.gravity;
     for (const b of jar.bodies.values()) {
       Body.applyForce(b, b.position, { x: 0, y: -fluidAt(b.position.y) * b.area * g.y * g.scale });
+    }
+  });
+  // Jelly: a bump makes both blobs wobble.
+  Events.on(jar.engine, "collisionStart", (ev) => {
+    for (const { bodyA, bodyB } of ev.pairs) {
+      const rel = Math.hypot(bodyA.velocity.x - bodyB.velocity.x, bodyA.velocity.y - bodyB.velocity.y);
+      for (const b of [bodyA, bodyB]) if (b.plugin.jelly) b.plugin.jelly.vs += Math.min(0.12, rel * 0.02);
     }
   });
 
@@ -2687,17 +2878,15 @@ function ensureJar() {
   c.addEventListener("pointermove", jarPointerMove);
   c.addEventListener("pointerup", jarPointerUp);
   c.addEventListener("pointercancel", jarPointerUp);
-  c.addEventListener("pointerleave", () => { if (!jar.down) jar.tip.style.opacity = "0"; });
-  c.addEventListener("contextmenu", (e) => {
-    e.preventDefault();
-    const b = bodyAt(jarPoint(e));
-    if (b) openJarMenu(b, jarPoint(e));
-  });
+  c.addEventListener("pointerleave", () => { if (!jar.down) { jar.hover = null; jar.tip.style.opacity = "0"; } });
+  // The right button is handled in pointerdown/up (short = menu, hold = slice).
+  c.addEventListener("contextmenu", (e) => e.preventDefault());
   // On touch screens, only stop the page from scrolling when a blob is touched.
   c.addEventListener("touchstart", (e) => {
     const r = c.getBoundingClientRect(), t = e.touches[0];
-    if (bodyAt({ x: t.clientX - r.left, y: t.clientY - r.top })) e.preventDefault();
+    if (hitAt({ x: t.clientX - r.left, y: t.clientY - r.top })) e.preventDefault();
   }, { passive: false });
+  setInterval(updateJarTip, 250);
 }
 
 function jarResize() {
@@ -2710,7 +2899,7 @@ function jarResize() {
   jar.canvas.height = Math.round(jar.h * jar.dpr);
   jar.scale = Math.max(0.62, Math.min(1, jar.w / 700));
   Composite.remove(jar.engine.world, jar.walls);
-  const T = 80, opts = { isStatic: true, friction: 0.1 };
+  const T = 80, opts = { isStatic: true, friction: 0.1, collisionFilter: { category: CAT_WALL } };
   jar.walls = [
     Bodies.rectangle(jar.w / 2, jar.h + T / 2, jar.w + 2 * T, T, opts),
     Bodies.rectangle(jar.w / 2, -T / 2, jar.w + 2 * T, T, opts),
@@ -2719,10 +2908,10 @@ function jarResize() {
   ];
   Composite.add(jar.engine.world, jar.walls);
   for (const b of jar.bodies.values()) {
-    const rad = b.circleRadius;
+    const { w, h } = b.plugin.shape;
     Body.setPosition(b, {
-      x: Math.max(rad, Math.min(jar.w - rad, b.position.x)),
-      y: Math.max(rad, Math.min(jar.h - rad, b.position.y)),
+      x: Math.max(w / 2, Math.min(jar.w - w / 2, b.position.x)),
+      y: Math.max(h / 2, Math.min(jar.h - h / 2, b.position.y)),
     });
   }
   readJarColors();
@@ -2735,7 +2924,7 @@ function readJarColors() {
   jar.colors = {
     ink: v("--ink"), mid: v("--ink-mid"), muted: v("--ink-muted"), faint: v("--ink-faint"),
     line: v("--line"), surface: v("--surface"), surface2: v("--surface-2"), bg: v("--bg"),
-    q1: v("--q1"), q2: v("--q2"), quick: v("--quick"), q4: v("--q4"),
+    q1: v("--q1"), q2: v("--q2"), quick: v("--quick"), q4: v("--q4"), good: v("--good"),
     steel: v("--steel"), amber: v("--amber"), accent: v("--accent"), bucket: v("--bucket"),
     head: v("--head"), sans: v("--sans"),
   };
@@ -2747,21 +2936,145 @@ function rgba(hex, a) {
   return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`;
 }
 
-// Size: 26 px (15 min) to 64 px (4 hrs), big enough for the words,
-// and smaller when the jar is crowded.
-function blobRadius(t, crowd = 1) {
-  const { len } = weightParts(t);
+/* ---- shapes ---- */
+const lenOf = (mins, lo = 15, hi = 240) => Math.log(Math.min(hi, Math.max(lo, mins)) / lo) / Math.log(hi / lo);
+const subRadius = (s) => (11 + 9 * lenOf(s.duration || 15, 5, 120)) * jar.scale;
+const openSubs = (t) => (t.steps || []).filter(s => !s.done);
+
+// Circle for short titles, pill for long ones, rounded box with a pocket
+// when the to-do has open sub-bubbles. Height follows "takes about".
+function blobShape(t, crowd = 1) {
+  const k = jar.scale * crowd;
   jar.ctx.font = `600 13px ${jar.colors.sans || "sans-serif"}`;
-  const textW = jar.ctx.measureText(t.text).width;
-  const byLen = 26 + 38 * len;
-  const byText = Math.min(58, 16 + Math.sqrt(textW) * 2.1);
-  return Math.max(byLen, byText) * jar.scale * crowd;
+  const textW = jar.ctx.measureText(t.text).width * k;
+  const r = (26 + 38 * weightParts(t).len) * k;
+  const subs = openSubs(t);
+  if (subs.length) {
+    const pocket = subs.reduce((n, s) => n + Math.PI * (subRadius(s) * crowd) ** 2, 0) * 2.4;
+    const band = 44 * k;
+    const w = Math.min(jar.w * 0.62, Math.max(2 * r, textW / 2 + 40 * k, Math.sqrt(pocket * 1.5)));
+    const h = Math.max(2 * r, band + pocket / (w - 16) + 16);
+    return { kind: "box", w, h, cr: Math.min(28 * k, h / 3), band };
+  }
+  if (textW <= 2 * r * 1.55 * 1.6) return { kind: "circle", w: 2 * r, h: 2 * r, cr: r };
+  const h = Math.max(2 * r * 0.8, 46 * k);
+  const w = Math.min(jar.w * 0.6, Math.max(h * 1.2, textW / 2 + h * 0.75));
+  return { kind: "pill", w, h, cr: h / 2 };
+}
+const shapeArea = (s) => s.kind === "circle" ? Math.PI * s.cr * s.cr : s.w * s.h - (4 - Math.PI) * s.cr * s.cr;
+
+// Points around a circle or rounded rectangle, with the outward direction at each.
+function outline(shape, N = 40) {
+  if (shape.kind === "circle") {
+    return Array.from({ length: N }, (_, i) => {
+      const a = (i / N) * Math.PI * 2;
+      return { x: Math.cos(a) * shape.cr, y: Math.sin(a) * shape.cr, nx: Math.cos(a), ny: Math.sin(a), u: i / N };
+    });
+  }
+  const { w, h } = shape, r = Math.min(shape.cr, w / 2, h / 2);
+  const sx = w / 2 - r, sy = h / 2 - r;
+  const segs = [
+    { len: 2 * sx, at: (f) => ({ x: -sx + 2 * sx * f, y: -h / 2, nx: 0, ny: -1 }) },
+    { len: Math.PI * r / 2, at: (f) => { const a = -Math.PI / 2 + f * Math.PI / 2; return { x: sx + Math.cos(a) * r, y: -sy + Math.sin(a) * r, nx: Math.cos(a), ny: Math.sin(a) }; } },
+    { len: 2 * sy, at: (f) => ({ x: w / 2, y: -sy + 2 * sy * f, nx: 1, ny: 0 }) },
+    { len: Math.PI * r / 2, at: (f) => { const a = f * Math.PI / 2; return { x: sx + Math.cos(a) * r, y: sy + Math.sin(a) * r, nx: Math.cos(a), ny: Math.sin(a) }; } },
+    { len: 2 * sx, at: (f) => ({ x: sx - 2 * sx * f, y: h / 2, nx: 0, ny: 1 }) },
+    { len: Math.PI * r / 2, at: (f) => { const a = Math.PI / 2 + f * Math.PI / 2; return { x: -sx + Math.cos(a) * r, y: sy + Math.sin(a) * r, nx: Math.cos(a), ny: Math.sin(a) }; } },
+    { len: 2 * sy, at: (f) => ({ x: -w / 2, y: sy - 2 * sy * f, nx: -1, ny: 0 }) },
+    { len: Math.PI * r / 2, at: (f) => { const a = Math.PI + f * Math.PI / 2; return { x: -sx + Math.cos(a) * r, y: -sy + Math.sin(a) * r, nx: Math.cos(a), ny: Math.sin(a) }; } },
+  ];
+  const total = segs.reduce((n, s) => n + s.len, 0) || 1;
+  const pts = [];
+  for (let i = 0; i < N; i++) {
+    let d = (i / N) * total;
+    for (const s of segs) {
+      if (d <= s.len || s === segs[segs.length - 1]) { pts.push({ ...s.at(s.len ? d / s.len : 0), u: i / N }); break; }
+      d -= s.len;
+    }
+  }
+  return pts;
 }
 
-// Make the physics world match the to-do list: add, update, remove blobs and links.
+function makeBlob(x, y, shape, w) {
+  const { Bodies, Body } = Matter;
+  const opts = {
+    density: blobDensity(w), frictionAir: 0.08, friction: 0.05, restitution: 0.15,
+    collisionFilter: { category: CAT_BLOB, mask: CAT_BLOB | CAT_WALL },
+  };
+  const b = shape.kind === "circle"
+    ? Bodies.circle(x, y, shape.cr, opts)
+    : Bodies.rectangle(x, y, shape.w, shape.h, { ...opts, chamfer: { radius: shape.cr } });
+  Body.setInertia(b, Infinity); // stay upright, so the words stay level
+  b.plugin.attractors = [groupAttractor];
+  b.plugin.seed = Math.random() * 10;
+  b.plugin.shape = shape;
+  b.plugin.pts = outline(shape, shape.kind === "circle" ? 32 : 44);
+  b.plugin.jelly = { s: 0, vs: 0, ang: 0, last: { x: 0, y: 0 } };
+  return b;
+}
+
+/* ---- sub-bubble pockets: a little world inside the parent ---- */
+function pocketRect(shape) {
+  const inset = 7;
+  const top = -shape.h / 2 + shape.band;
+  return { x0: -shape.w / 2 + inset, x1: shape.w / 2 - inset, y0: top, y1: shape.h / 2 - inset, r: Math.max(4, shape.cr - inset) };
+}
+function makePocket(parent) {
+  const { Engine, Bodies, Composite } = Matter;
+  const engine = Engine.create({ gravity: { x: 0, y: 1, scale: 0.0006 } });
+  const pr = pocketRect(parent.plugin.shape);
+  const T = 30, o = { isStatic: true, friction: 0.05 };
+  const cx = (pr.x0 + pr.x1) / 2, cy = (pr.y0 + pr.y1) / 2, w = pr.x1 - pr.x0, h = pr.y1 - pr.y0;
+  Composite.add(engine.world, [
+    Bodies.rectangle(cx, pr.y1 + T / 2, w + 2 * T, T, o),
+    Bodies.rectangle(cx, pr.y0 - T / 2, w + 2 * T, T, o),
+    Bodies.rectangle(pr.x0 - T / 2, cy, T, h + 2 * T, o),
+    Bodies.rectangle(pr.x1 + T / 2, cy, T, h + 2 * T, o),
+  ]);
+  return { engine, pr, subs: new Map(), lastV: { ...parent.velocity } };
+}
+function syncPocket(parent, t, crowd) {
+  const { Bodies, Composite, Body } = Matter;
+  const subs = openSubs(t);
+  if (!subs.length) { parent.plugin.pocket = null; return; }
+  const pk = parent.plugin.pocket || (parent.plugin.pocket = makePocket(parent));
+  const ids = new Set(subs.map(s => s.id));
+  for (const [id, sb] of pk.subs) if (!ids.has(id)) { Composite.remove(pk.engine.world, sb); pk.subs.delete(id); }
+  for (const s of subs) {
+    const r = Math.max(8, subRadius(s) * crowd);
+    let sb = pk.subs.get(s.id);
+    if (sb && Math.abs(sb.circleRadius - r) > 1) { Composite.remove(pk.engine.world, sb); sb = null; }
+    if (!sb) {
+      const { pr } = pk;
+      sb = Bodies.circle(pr.x0 + r + Math.random() * Math.max(1, pr.x1 - pr.x0 - 2 * r), pr.y0 + r + 2, r,
+        { frictionAir: 0.05, restitution: 0.3, density: 0.001 });
+      sb.plugin.seed = Math.random() * 10;
+      sb.plugin.pts = outline({ kind: "circle", cr: r }, 24);
+      sb.plugin.jelly = { s: 0, vs: 0, ang: 0, last: { x: 0, y: 0 } };
+      pk.subs.set(s.id, sb);
+      Composite.add(pk.engine.world, sb);
+    }
+    sb.plugin.sub = s;
+    sb.plugin.task = t;
+  }
+}
+// The pocket's gravity is the jar's gravity minus the parent's acceleration,
+// so the sub-bubbles slosh when you move the parent.
+function stepPocket(parent) {
+  const pk = parent.plugin.pocket;
+  if (!pk) return;
+  const ax = parent.velocity.x - pk.lastV.x, ay = parent.velocity.y - pk.lastV.y;
+  pk.lastV = { ...parent.velocity };
+  const g = pk.engine.gravity;
+  g.x = g.x * 0.7 + Math.max(-3, Math.min(3, -ax * 1.5)) * 0.3;
+  g.y = g.y * 0.7 + Math.max(-2, Math.min(4, 1 - ay * 1.5)) * 0.3;
+  Matter.Engine.update(pk.engine, 1000 / 60);
+}
+
+/* ---- keep the physics world in step with the list ---- */
 function syncJar() {
   if (!jar.engine || !jar.w) return;
-  const { Bodies, Body, Composite, Constraint } = Matter;
+  const { Body, Composite, Constraint } = Matter;
   const world = jar.engine.world;
   const tasks = state.tasks.filter(t => !t.done);
   const ids = new Set(tasks.map(t => t.id));
@@ -2769,39 +3082,45 @@ function syncJar() {
   for (const [id, b] of jar.bodies) {
     if (ids.has(id)) continue;
     const t = taskById(id);
-    if (t?.done) jar.pops.push({ x: b.position.x, y: b.position.y, r: b.circleRadius, t0: performance.now(), c: blobColor(t) });
+    if (t?.done && !jar.slicing.has(id)) jar.pops.push({ x: b.position.x, y: b.position.y, r: b.plugin.shape.h / 2, t0: performance.now(), c: blobColor(t) });
+    jar.slicing.delete(id);
     Composite.remove(world, b);
     jar.bodies.delete(id);
   }
 
   // Shrink everything a little when the blobs would fill more than half the jar.
-  const want = tasks.map(t => blobRadius(t));
-  const area = want.reduce((n, r) => n + Math.PI * r * r, 0);
+  const want = tasks.map(t => blobShape(t));
+  const area = want.reduce((n, s) => n + shapeArea(s), 0);
   const crowd = Math.min(1, Math.sqrt((0.5 * jar.w * jar.h) / (area || 1)));
 
-  tasks.forEach((t, i) => {
-    const r = Math.max(14, want[i] * crowd);
+  tasks.forEach((t) => {
+    const shape = crowd < 1 ? blobShape(t, crowd) : want[tasks.indexOf(t)];
     const { w } = weightParts(t);
     let b = jar.bodies.get(t.id);
-    if (b && Math.abs(b.circleRadius - r) > 1.5) {
-      // Size changed: swap in a new circle at the same place and speed.
-      const nb = makeBlob(b.position.x, b.position.y, r, w);
+    const old = b?.plugin.shape;
+    if (b && (old.kind !== shape.kind || Math.abs(old.w - shape.w) > 2 || Math.abs(old.h - shape.h) > 2)) {
+      // Shape changed: swap in a new body at the same place and speed.
+      const nb = makeBlob(b.position.x, b.position.y, shape, w);
       Body.setVelocity(nb, b.velocity);
+      nb.plugin.jelly.vs = 0.12;
       Composite.remove(world, b);
       b = nb;
       jar.bodies.set(t.id, b);
       Composite.add(world, b);
     } else if (!b) {
-      const x = r + Math.random() * Math.max(1, jar.w - 2 * r);
+      const x = shape.w / 2 + Math.random() * Math.max(1, jar.w - shape.w);
       // First time: start near where it will settle. New to-dos drop in from the top.
-      const y = jar.placed ? r + 2 : Math.max(r, Math.min(jar.h - r, w * jar.h));
-      b = makeBlob(x, y, r, w);
+      const y = jar.placed ? shape.h / 2 + 2 : Math.max(shape.h / 2, Math.min(jar.h - shape.h / 2, w * jar.h));
+      b = makeBlob(x, y, shape, w);
       jar.bodies.set(t.id, b);
       Composite.add(world, b);
+      if (jar.placed) splash(x, y - shape.h / 2, blobColor(t));
     } else if (Math.abs(b.density - blobDensity(w)) > 1e-7) {
       Body.setDensity(b, blobDensity(w));
+      Body.setInertia(b, Infinity);
     }
     b.plugin.task = t;
+    syncPocket(b, t, crowd);
   });
   jar.placed = true;
 
@@ -2817,19 +3136,10 @@ function syncJar() {
   }
   for (const [key, [a, b]] of wanted) {
     if (jar.links.has(key)) continue;
-    const c = Constraint.create({ bodyA: a, bodyB: b, length: a.circleRadius + b.circleRadius + 70, stiffness: 0.0015, damping: 0.02 });
+    const c = Constraint.create({ bodyA: a, bodyB: b, length: (a.plugin.shape.w + b.plugin.shape.w) / 2 + 70, stiffness: 0.0015, damping: 0.02 });
     jar.links.set(key, c);
     Composite.add(world, c);
   }
-}
-
-function makeBlob(x, y, r, w) {
-  const b = Matter.Bodies.circle(x, y, r, {
-    density: blobDensity(w), frictionAir: 0.08, friction: 0.05, restitution: 0.1,
-  });
-  b.plugin.attractors = [groupAttractor];
-  b.plugin.seed = Math.random() * 10;
-  return b;
 }
 
 // matter-attractors: blobs that share the picked tag pull toward each other,
@@ -2844,29 +3154,44 @@ function groupAttractor(a, b) {
   return f;
 }
 
-/* ---- pointer: drag, tap, long-press, link ---- */
+/* ---- finding what is under the pointer ---- */
 function jarPoint(e) {
   const r = jar.canvas.getBoundingClientRect();
   return { x: e.clientX - r.left, y: e.clientY - r.top };
 }
 function bodyAt(p) {
-  for (const b of jar.bodies.values()) {
-    if (Math.hypot(b.position.x - p.x, b.position.y - p.y) <= b.circleRadius) return b;
+  return Matter.Query.point([...jar.bodies.values()], p)[0] || null;
+}
+// A blob, or a sub-bubble inside a blob's pocket.
+function hitAt(p) {
+  const b = bodyAt(p);
+  if (!b) return null;
+  const pk = b.plugin.pocket;
+  if (pk) {
+    const local = { x: p.x - b.position.x, y: p.y - b.position.y };
+    const sb = Matter.Query.point([...pk.subs.values()], local)[0];
+    if (sb) return { body: b, subBody: sb, task: b.plugin.task, sub: sb.plugin.sub };
   }
-  return null;
+  return { body: b, task: b.plugin.task };
 }
 
+/* ---- pointer: drag, tap, menu, link, charge-and-slice ---- */
 function jarPointerDown(e) {
-  if (e.button === 2) return;
   closeJarMenu();
-  const p = jarPoint(e), b = bodyAt(p);
-  jar.down = { p, b, t0: performance.now(), moved: false, id: e.pointerId };
-  if (!b) return;
+  const p = jarPoint(e), hit = hitAt(p);
+  jar.down = { p, hit, t0: performance.now(), moved: false, button: e.button, type: e.pointerType };
+  if (!hit) return;
   jar.canvas.setPointerCapture?.(e.pointerId);
   jar.tip.style.opacity = "0";
+  if (e.button === 2) {
+    // Hold the right button: after a short moment, the slice starts charging.
+    jar.down.press = setTimeout(() => startCharge(hit), 200);
+    return;
+  }
   if (_tool === "link") {
-    jar.linkLine = { from: b, p };
+    jar.linkLine = { from: hit.body, p };
   } else {
+    const b = hit.body;
     jar.drag = Matter.Constraint.create({
       pointA: { ...p }, bodyB: b,
       pointB: { x: p.x - b.position.x, y: p.y - b.position.y },
@@ -2874,35 +3199,52 @@ function jarPointerDown(e) {
     });
     Matter.Composite.add(jar.engine.world, jar.drag);
   }
+  // Touch: hold still to charge a slice. Mouse: hold still for the menu.
   jar.down.press = setTimeout(() => {
-    if (jar.down && !jar.down.moved) { endDrag(); jar.linkLine = null; openJarMenu(b, p); jar.down = null; }
-  }, 550);
+    if (!jar.down || jar.down.moved) return;
+    if (e.pointerType === "mouse") { endDrag(); jar.linkLine = null; openJarMenu(hit, p); jar.down = null; }
+    else { endDrag(); jar.linkLine = null; startCharge(hit); }
+  }, e.pointerType === "mouse" ? 550 : 300);
 }
 
 function jarPointerMove(e) {
   const p = jarPoint(e);
   if (jar.down) {
-    if (Math.hypot(p.x - jar.down.p.x, p.y - jar.down.p.y) > 6) { jar.down.moved = true; clearTimeout(jar.down.press); }
+    if (Math.hypot(p.x - jar.down.p.x, p.y - jar.down.p.y) > 6) {
+      jar.down.moved = true;
+      if (!jar.charge) clearTimeout(jar.down.press);
+    }
     if (jar.drag) jar.drag.pointA = p;
     if (jar.linkLine) jar.linkLine.p = p;
     return;
   }
-  const b = bodyAt(p);
-  jar.canvas.style.cursor = b ? (_tool === "link" ? "crosshair" : "grab") : "default";
-  if (b && e.pointerType === "mouse") {
-    const t = b.plugin.task, w = waitingOn(t);
-    jar.tip.replaceChildren(
-      el("strong", { text: t.text }),
-      el("div", { text: weightReasons(t) }),
-      (t.tags || []).length ? el("div", { text: t.tags.map(x => `#${x}`).join(" ") }) : null,
-      w.length ? el("div", { text: `🔒 Finish first: ${w.map(x => x.text).join(", ")}` }) : null,
-    );
-    jar.tip.style.left = `${Math.min(p.x + 14, jar.w - 230)}px`;
-    jar.tip.style.top = `${Math.min(p.y + 14, jar.h - 80)}px`;
-    jar.tip.style.opacity = "1";
-  } else {
-    jar.tip.style.opacity = "0";
-  }
+  const hit = hitAt(p);
+  jar.canvas.style.cursor = hit ? (_tool === "link" ? "crosshair" : "grab") : "default";
+  jar.hover = hit && e.pointerType === "mouse" ? { ...hit, p } : null;
+  updateJarTip();
+}
+
+// Hover details, with a live countdown to "overdue".
+function updateJarTip() {
+  const h = jar.hover;
+  if (!h || !jar.tip) { if (jar.tip) jar.tip.style.opacity = "0"; return; }
+  const t = h.task, x = h.sub || t;
+  const i = dueInfo(x);
+  const subs = t.steps || [];
+  jar.tip.replaceChildren(
+    el("strong", { text: x.text }),
+    h.sub ? el("div", { class: "tip-dim", text: `Part of “${t.text}”` }) : null,
+    el("div", { class: `tip-due ${i ? i.cls : ""}`, text: i ? i.long : "No due date" }),
+    h.sub ? null : el("div", { text: weightReasons(t) }),
+    !h.sub && subs.length ? el("div", { text: `${subs.filter(s => s.done).length} of ${subs.length} sub-bubbles done` }) : null,
+    !h.sub && (t.tags || []).length ? el("div", { text: t.tags.map(x => `#${x}`).join(" ") }) : null,
+    !h.sub && waitingOn(t).length ? el("div", { text: `🔒 Finish first: ${waitingOn(t).map(x => x.text).join(", ")}` }) : null,
+    x.details ? el("div", { class: "tip-dim", text: x.details.length > 90 ? x.details.slice(0, 90) + "…" : x.details }) : null,
+    el("div", { class: "tip-dim", text: "Hold right-click to slice" }),
+  );
+  jar.tip.style.left = `${Math.max(4, Math.min(h.p.x + 14, jar.w - 250))}px`;
+  jar.tip.style.top = `${Math.max(4, Math.min(h.p.y + 14, jar.h - jar.tip.offsetHeight - 6))}px`;
+  jar.tip.style.opacity = "1";
 }
 
 function endDrag() {
@@ -2916,19 +3258,31 @@ function jarPointerUp(e) {
   if (!d) return;
   clearTimeout(d.press);
   const p = jarPoint(e);
-  const target = bodyAt(p);
   const line = jar.linkLine;
   jar.linkLine = null;
-  if (e.type === "pointercancel") return;
 
+  // Releasing a charge: slice if it is full, otherwise cancel.
+  if (jar.charge) {
+    const ch = jar.charge;
+    jar.charge = null;
+    if (e.type !== "pointercancel" && performance.now() - ch.t0 >= CHARGE_MS && !ch.broken) {
+      doSlice(ch.hit, ch.angle);
+    }
+    return;
+  }
+  if (e.type === "pointercancel") return;
+  // A short right-click opens the menu.
+  if (d.button === 2) { if (d.hit) openJarMenu(d.hit, p); return; }
+
+  const target = hitAt(p);
   if (_tool === "link") {
     // Drag from one blob to another, or tap one and then the other.
-    if (line && target && target !== line.from) {
-      if (addLink(line.from.plugin.task, target.plugin.task)) { _linkFrom = null; syncJar(); render(); }
+    if (line && target && target.body !== line.from) {
+      if (addLink(line.from.plugin.task, target.task)) { _linkFrom = null; syncJar(); render(); }
       return;
     }
     if (!d.moved && target) {
-      const t = target.plugin.task;
+      const t = target.task;
       if (_linkFrom && _linkFrom !== t.id) {
         if (addLink(taskById(_linkFrom), t)) syncJar();
         _linkFrom = null;
@@ -2944,30 +3298,182 @@ function jarPointerUp(e) {
   }
 
   if (d.moved || performance.now() - d.t0 > 500) return;
-  // A tap opens the editor under the jar. Tapping empty space closes it.
-  const id = target ? target.plugin.task.id : null;
-  if (_openFor === id) return;
+  // A tap opens the editor under the jar (a sub-bubble opens its own details).
+  const id = target ? target.task.id : null;
+  if (target?.sub) _subDetailsOpen = target.sub.id;
+  if (_openFor === id && !target?.sub) return;
   _openFor = id;
   _stepsOpenFor = id;
   render();
   if (id) setTimeout(() => $(".jar-editor")?.scrollIntoView({ behavior: reduceMotion() ? "auto" : "smooth", block: "nearest" }), 0);
 }
 
-function openJarMenu(b, p) {
-  const t = b.plugin.task;
+function openJarMenu(hit, p) {
+  const t = hit.task, s = hit.sub;
   const item = (label, fn, cls = "") => el("button", { type: "button", role: "menuitem", class: cls, text: label, onclick: () => { closeJarMenu(); fn(); } });
-  jar.menu.replaceChildren(
-    item(isBlocked(t) ? "🔒 Done" : "✓ Done", () => completeTask(t, null)),
+  jar.menu.replaceChildren(...(s ? [
+    item("⚔ Slice this part", () => doSlice(hit, -0.3)),
+    item("Edit", () => { _openFor = t.id; _subDetailsOpen = s.id; render(); setTimeout(() => $(".jar-editor")?.scrollIntoView({ block: "nearest" }), 0); }),
+  ] : [
+    item(isBlocked(t) ? "🔒 Slice (done)" : "⚔ Slice (done)", () => doSlice(hit, -0.3)),
     item("Edit", () => { _openFor = t.id; _stepsOpenFor = t.id; render(); setTimeout(() => $(".jar-editor")?.scrollIntoView({ block: "nearest" }), 0); }),
     item("Link from here", () => { _tool = "link"; _linkFrom = t.id; render(); toast(`Now tap the to-do that waits for “${t.text}”.`); }),
     item("Delete", () => { deleteTask(t); if (_openFor === t.id) _openFor = null; saveState(); render(); }, "danger"),
-  );
-  jar.menu.style.left = `${Math.min(p.x, jar.w - 170)}px`;
-  jar.menu.style.top = `${Math.min(p.y, jar.h - 170)}px`;
+  ]));
+  jar.menu.style.left = `${Math.min(p.x, jar.w - 180)}px`;
+  jar.menu.style.top = `${Math.min(p.y, jar.h - 180)}px`;
   jar.menu.classList.add("open");
   jar.menu.querySelector("button")?.focus();
 }
 function closeJarMenu() { jar.menu?.classList.remove("open"); }
+
+/* ---- charge and slice ---- */
+function startCharge(hit) {
+  if (!jar.down) return;
+  jar.hover = null;
+  jar.tip.style.opacity = "0";
+  jar.charge = {
+    hit, t0: performance.now(),
+    angle: -0.45 + Math.random() * 0.3,
+    blocked: !hit.sub && isBlocked(hit.task),
+    broken: false,
+  };
+}
+
+// Cut a convex outline in two along a line through its centre.
+function splitPolygon(pts, c, angle) {
+  const n = { x: -Math.sin(angle), y: Math.cos(angle) };
+  const side = (p) => (p.x - c.x) * n.x + (p.y - c.y) * n.y;
+  const halves = [[], []];
+  for (let i = 0; i < pts.length; i++) {
+    const a = pts[i], b = pts[(i + 1) % pts.length];
+    const sa = side(a), sb = side(b);
+    (sa >= 0 ? halves[0] : halves[1]).push({ x: a.x, y: a.y });
+    if ((sa >= 0) !== (sb >= 0)) {
+      const k = sa / (sa - sb);
+      const q = { x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k };
+      halves[0].push(q); halves[1].push({ ...q });
+    }
+  }
+  return { halves: halves.filter(h => h.length >= 3), n };
+}
+
+// The slice: blade flash, two halves fly apart and fall, then the to-do is done.
+function doSlice(hit, angle) {
+  const t = hit.task, s = hit.sub;
+  if (!s && isBlocked(t)) { completeTask(t, null); return; } // shows "finish X first"
+  const { Bodies, Body, Composite } = Matter;
+  let center, pts, color = blobColor(t), r;
+  if (s) {
+    const sb = hit.subBody, pb = hit.body;
+    center = { x: pb.position.x + sb.position.x, y: pb.position.y + sb.position.y };
+    r = sb.circleRadius;
+    pts = sb.plugin.pts.map(q => ({ x: center.x + q.x, y: center.y + q.y }));
+  } else {
+    const b = hit.body;
+    center = { ...b.position };
+    r = b.plugin.shape.w / 2;
+    pts = b.plugin.pts.map(q => ({ x: center.x + q.x, y: center.y + q.y }));
+  }
+  const { halves, n } = splitPolygon(pts, center, angle);
+  halves.forEach((h, i) => {
+    const cx = h.reduce((a, p) => a + p.x, 0) / h.length, cy = h.reduce((a, p) => a + p.y, 0) / h.length;
+    const piece = Bodies.fromVertices(cx, cy, [h], {
+      frictionAir: 0.02, restitution: 0.3,
+      collisionFilter: { category: CAT_PIECE, mask: CAT_WALL },
+    });
+    if (!piece) return;
+    const dir = i === 0 ? 1 : -1;
+    Body.setVelocity(piece, { x: n.x * 5 * dir, y: n.y * 5 * dir - 3 });
+    Body.setAngularVelocity(piece, 0.08 * dir);
+    piece.plugin.color = color;
+    piece.plugin.t0 = performance.now();
+    jar.pieces.push(piece);
+    Composite.add(jar.engine.world, piece);
+  });
+  jar.flashes.push({ x: center.x, y: center.y, a: angle, len: r * 2.6, t0: performance.now(), c: color });
+  for (let i = 0; i < 14; i++) {
+    const a = Math.random() * Math.PI * 2, v = 2 + Math.random() * 4;
+    jar.drops.push({ x: center.x, y: center.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 2, r: 1.5 + Math.random() * 2.5, t0: performance.now(), c: color });
+  }
+  const fakeEl = { getBoundingClientRect: () => {
+    const cr = jar.canvas.getBoundingClientRect();
+    return { left: cr.left + center.x, top: cr.top + center.y, width: 0, height: 0 };
+  } };
+  if (s) {
+    const pk = hit.body.plugin.pocket;
+    if (pk) { Composite.remove(pk.engine.world, hit.subBody); pk.subs.delete(s.id); }
+    setSubDone(t, s, true);
+    celebrate(fakeEl);
+    toast(`Sliced: ${s.text}`);
+    saveState(); syncJar(); render();
+  } else {
+    Composite.remove(jar.engine.world, hit.body);
+    jar.bodies.delete(t.id);
+    jar.slicing.add(t.id);
+    if (_openFor === t.id) _openFor = null;
+    completeTask(t, fakeEl);
+  }
+}
+
+// From buttons (editor, list): play the slice when the blob is on screen.
+function sliceTask(t, fromEl) {
+  const b = jar.bodies.get(t.id);
+  if (b && jar.wrap?.isConnected && !isBlocked(t)) { doSlice({ body: b, task: t }, -0.3); return; }
+  if (completeTask(t, fromEl) && _openFor === t.id) { _openFor = null; render(); }
+}
+function sliceSub(t, s, fromEl) {
+  const pk = jar.bodies.get(t.id)?.plugin.pocket;
+  const sb = pk?.subs.get(s.id);
+  if (sb && jar.wrap?.isConnected) { doSlice({ body: jar.bodies.get(t.id), subBody: sb, task: t, sub: s }, -0.3); return; }
+  setSubDone(t, s, true);
+  celebrate(fromEl);
+  saveState(); render();
+}
+
+/* ---- little effects ---- */
+function splash(x, y, color) {
+  if (reduceMotion()) return;
+  const now = performance.now();
+  jar.pops.push({ x, y, r: 6, t0: now, c: color });
+  for (let i = 0; i < 9; i++) {
+    const a = -Math.PI * (0.15 + 0.7 * Math.random()), v = 2 + Math.random() * 3;
+    jar.drops.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, r: 1.5 + Math.random() * 2, t0: now, c: color });
+  }
+}
+function stepEffects(ts) {
+  // Rising bubbles in the liquid.
+  if (!reduceMotion() && jar.fizz.length < 26 && Math.random() < 0.06) {
+    jar.fizz.push({ x: Math.random() * jar.w, y: jar.h + 4, r: 1.2 + Math.random() * 3, v: 0.25 + Math.random() * 0.6, s: Math.random() * 6 });
+  }
+  jar.fizz.forEach(f => { f.y -= f.v; f.x += Math.sin(ts / 500 + f.s) * 0.25; });
+  jar.fizz = jar.fizz.filter(f => f.y > -6);
+  jar.drops.forEach(d => { d.x += d.vx; d.y += d.vy; d.vy += 0.18; d.vx *= 0.98; });
+  jar.drops = jar.drops.filter(d => ts - d.t0 < 700);
+  // Slice pieces fade, then leave.
+  jar.pieces = jar.pieces.filter(p => {
+    if (ts - p.plugin.t0 < 1600) return true;
+    Matter.Composite.remove(jar.engine.world, p);
+    return false;
+  });
+  // Jelly: each blob is a small spring that squashes on bumps and settles.
+  for (const b of jar.bodies.values()) jellyStep(b);
+  for (const b of jar.bodies.values()) {
+    const pk = b.plugin.pocket;
+    if (pk) for (const sb of pk.subs.values()) jellyStep(sb);
+  }
+}
+function jellyStep(b) {
+  const j = b.plugin.jelly;
+  if (!j) return;
+  const dvx = b.velocity.x - j.last.x, dvy = b.velocity.y - j.last.y;
+  const kick = Math.hypot(dvx, dvy);
+  if (kick > 0.35) { j.vs += Math.min(0.08, kick * 0.03); j.ang = Math.atan2(dvy, dvx); }
+  j.last = { ...b.velocity };
+  j.vs += -0.22 * j.s;
+  j.vs *= 0.86;
+  j.s = Math.max(-0.22, Math.min(0.22, j.s + j.vs));
+}
 
 /* ---- drawing ---- */
 function blobColor(t) {
@@ -2994,23 +3500,31 @@ function wrapLines(ctx, text, maxW, maxLines) {
   return lines;
 }
 
-// A soft, slightly wobbly outline. It wobbles more while the blob moves.
-function blobPath(ctx, b, ts) {
-  const r = b.circleRadius, { x, y } = b.position, s = b.plugin.seed;
+// A soft, wobbly outline that breathes, and squashes along its last bump.
+function jellyPath(ctx, b, ts, extra = 0) {
+  const pts = b.plugin.pts, s = b.plugin.seed, j = b.plugin.jelly || { s: 0, ang: 0 };
+  const calm = reduceMotion();
   const speed = Math.min(1, Math.hypot(b.velocity.x, b.velocity.y) / 3);
-  const amp = reduceMotion() ? 0 : 0.025 + 0.05 * speed;
-  const N = 28, pts = [];
+  const size = b.plugin.shape ? Math.min(b.plugin.shape.w, b.plugin.shape.h) / 2 : b.circleRadius;
+  const amp = calm ? 0 : size * (0.022 + 0.045 * speed) + extra;
+  const breathe = calm ? 1 : 1 + 0.018 * Math.sin(ts / 850 + s);
+  const sq = calm ? 0 : j.s, ca = Math.cos(j.ang), sa = Math.sin(j.ang);
+  const N = pts.length, out = [];
   for (let i = 0; i < N; i++) {
-    const a = (i / N) * Math.PI * 2;
-    const k = 1 + amp * Math.sin(3 * a + ts / 650 + s) + amp * 0.5 * Math.sin(5 * a - ts / 900 + 2 * s);
-    pts.push([x + Math.cos(a) * r * k, y + Math.sin(a) * r * k]);
+    const p = pts[i], a = p.u * Math.PI * 2;
+    const k = amp * Math.sin(3 * a + ts / 650 + s) + amp * 0.5 * Math.sin(5 * a - ts / 900 + 2 * s);
+    let x = (p.x + p.nx * k) * breathe, y = (p.y + p.ny * k) * breathe;
+    // Squash and stretch along the bump direction.
+    const along = x * ca + y * sa, across = -x * sa + y * ca;
+    const a2 = along * (1 + sq), c2 = across * (1 - sq);
+    out.push([b.position.x + a2 * ca - c2 * sa, b.position.y + a2 * sa + c2 * ca]);
   }
   ctx.beginPath();
   const mid = (p, q) => [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2];
-  let m = mid(pts[N - 1], pts[0]);
+  const m = mid(out[N - 1], out[0]);
   ctx.moveTo(m[0], m[1]);
   for (let i = 0; i < N; i++) {
-    const p = pts[i], q = mid(p, pts[(i + 1) % N]);
+    const p = out[i], q = mid(p, out[(i + 1) % N]);
     ctx.quadraticCurveTo(p[0], p[1], q[0], q[1]);
   }
   ctx.closePath();
@@ -3019,8 +3533,13 @@ function blobPath(ctx, b, ts) {
 function arrow(ctx, a, b, color, dashed) {
   const dx = b.position.x - a.position.x, dy = b.position.y - a.position.y;
   const d = Math.hypot(dx, dy) || 1, nx = dx / d, ny = dy / d;
-  const sx = a.position.x + nx * a.circleRadius, sy = a.position.y + ny * a.circleRadius;
-  const ex = b.position.x - nx * (b.circleRadius + 3), ey = b.position.y - ny * (b.circleRadius + 3);
+  const edge = (body, dir) => {
+    const { w, h } = body.plugin.shape;
+    return Math.min(Math.abs(w / 2 / (dir.x || 1e-6)), Math.abs(h / 2 / (dir.y || 1e-6)), Math.hypot(w, h) / 2);
+  };
+  const ra = edge(a, { x: nx, y: ny }), rb = edge(b, { x: nx, y: ny });
+  const sx = a.position.x + nx * ra, sy = a.position.y + ny * ra;
+  const ex = b.position.x - nx * (rb + 3), ey = b.position.y - ny * (rb + 3);
   ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 2;
   ctx.setLineDash(dashed ? [6, 5] : []);
   ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();
@@ -3033,17 +3552,22 @@ function arrow(ctx, a, b, color, dashed) {
   ctx.closePath(); ctx.fill();
 }
 
+const RING = (c, cls) => ({ calm: c.steel, soon: c.amber, near: c.accent, past: c.muted })[cls];
+
 function drawJar(ts) {
   const ctx = jar.ctx, c = jar.colors, W = jar.w, H = jar.h;
   ctx.setTransform(jar.dpr, 0, 0, jar.dpr, 0, 0);
   ctx.clearRect(0, 0, W, H);
 
-  // Liquid: clear at the top, deeper toward the bottom.
+  // Liquid: clear at the top, deeper toward the bottom, with rising bubbles.
   const g = ctx.createLinearGradient(0, 0, 0, H);
   g.addColorStop(0, rgba(c.bucket, 0.02));
   g.addColorStop(1, rgba(c.steel, 0.14));
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = rgba(c.bucket, 0.35); ctx.lineWidth = 1;
+  for (const f of jar.fizz) { ctx.globalAlpha = Math.min(1, f.y / H + 0.2); ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2); ctx.stroke(); }
+  ctx.globalAlpha = 1;
   ctx.font = `700 11px ${c.sans}`;
   ctx.fillStyle = c.muted;
   ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
@@ -3058,7 +3582,7 @@ function drawJar(ts) {
     if (mem.length) {
       const cx = mem.reduce((n, b) => n + b.position.x, 0) / mem.length;
       const cy = mem.reduce((n, b) => n + b.position.y, 0) / mem.length;
-      const R = Math.max(...mem.map(b => Math.hypot(b.position.x - cx, b.position.y - cy) + b.circleRadius)) + 12;
+      const R = Math.max(...mem.map(b => Math.hypot(b.position.x - cx, b.position.y - cy) + b.plugin.shape.w / 2)) + 12;
       ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2);
       ctx.fillStyle = rgba(c.bucket, 0.07); ctx.fill();
       ctx.setLineDash([7, 6]); ctx.strokeStyle = rgba(c.bucket, 0.7); ctx.lineWidth = 1.5; ctx.stroke(); ctx.setLineDash([]);
@@ -3076,40 +3600,142 @@ function drawJar(ts) {
     ctx.setLineDash([]);
   }
 
-  const RING = { calm: c.steel, soon: c.amber, near: c.accent, past: c.muted };
+  const ch = jar.charge;
+  const chargeK = ch ? Math.min(1, (performance.now() - ch.t0) / CHARGE_MS) : 0;
+  if (ch && ch.blocked && chargeK >= 1 && !ch.broken) {
+    ch.broken = true;
+    const w = waitingOn(ch.hit.task)[0];
+    toast(`Finish “${w?.text}” first. Then this one opens up.`, "error");
+  }
+
   for (const b of bodies) {
     const t = b.plugin.task;
     const col = blobColor(t);
     const blocked = isBlocked(t);
-    const soft = softTime(t);
+    const due = dueInfo(t);
+    const charging = ch && ch.hit.body === b && !ch.hit.sub;
+    ctx.save();
+    if (charging && !reduceMotion()) ctx.translate((Math.random() - 0.5) * 4 * chargeK, (Math.random() - 0.5) * 4 * chargeK);
     ctx.globalAlpha = _groupTag && !hasTag(t, _groupTag) ? 0.3 : blocked ? 0.62 : 1;
-    blobPath(ctx, b, ts);
+    jellyPath(ctx, b, ts, charging ? 2 * chargeK : 0);
     ctx.fillStyle = c.surface; ctx.fill();
     ctx.fillStyle = rgba(col, t.quadrant ? 0.2 : 0.1); ctx.fill();
-    ctx.strokeStyle = soft ? RING[soft.cls] : rgba(col, 0.75);
-    ctx.lineWidth = soft ? 3 : 2;
+    ctx.strokeStyle = due ? RING(c, due.cls) : rgba(col, 0.75);
+    ctx.lineWidth = due ? 3 : 2;
     ctx.stroke();
     if (_openFor === t.id || _linkFrom === t.id) {
-      ctx.beginPath(); ctx.arc(b.position.x, b.position.y, b.circleRadius + 6, 0, Math.PI * 2);
-      ctx.strokeStyle = c.accent; ctx.lineWidth = 2.5; ctx.stroke();
+      jellyPath(ctx, b, ts, 6);
+      ctx.strokeStyle = rgba(c.accent, 0.8); ctx.lineWidth = 2; ctx.stroke();
     }
 
-    // Words inside the blob.
-    const r = b.circleRadius;
-    const fs = Math.max(10.5, Math.min(14, r / 3.4));
+    // Words inside the blob (a box keeps them in its top band).
+    const shape = b.plugin.shape;
+    const fs = Math.max(10.5, Math.min(14, shape.h / 6.8, shape.kind === "box" ? 13.5 : 14));
     ctx.font = `600 ${fs}px ${c.sans}`;
     ctx.fillStyle = c.ink; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    const lines = wrapLines(ctx, t.text, r * 1.55, r > 34 ? 3 : 2);
-    const sub = soft && r > 30 ? soft.txt.replace(/^Starts /, "").replace(/ · .*/, "") : "";
+    const maxW = shape.kind === "circle" ? shape.cr * 1.55 : shape.w - shape.cr * (shape.kind === "pill" ? 0.9 : 0.5) - 8;
+    const lines = wrapLines(ctx, t.text, maxW, shape.kind === "box" ? 2 : shape.h > 68 ? 3 : 2);
+    const sub = due && shape.h > 56 ? due.short : "";
     const lh = fs * 1.2;
-    let y = b.position.y - ((lines.length - 1) * lh + (sub ? lh : 0)) / 2;
-    if (blocked) { ctx.font = `${fs}px ${c.sans}`; ctx.fillText("🔒", b.position.x, y - lh); ctx.font = `600 ${fs}px ${c.sans}`; }
+    const cy = shape.kind === "box" ? b.position.y - shape.h / 2 + shape.band / 2 + 2 : b.position.y;
+    let y = cy - ((lines.length - 1) * lh + (sub && shape.kind !== "box" ? lh : 0)) / 2;
+    if (blocked) ctx.fillText("🔒", b.position.x, y - lh);
     for (const line of lines) { ctx.fillText(line, b.position.x, y); y += lh; }
-    if (sub) { ctx.font = `600 ${fs - 2}px ${c.sans}`; ctx.fillStyle = RING[soft.cls]; ctx.fillText(sub, b.position.x, y); }
-    ctx.globalAlpha = 1;
+    if (sub && shape.kind !== "box") { ctx.font = `700 ${fs - 2}px ${c.sans}`; ctx.fillStyle = RING(c, due.cls); ctx.fillText(sub, b.position.x, y); }
+
+    // The pocket and its sub-bubbles.
+    const pk = b.plugin.pocket;
+    if (pk) {
+      const pr = pk.pr, ox = b.position.x, oy = b.position.y;
+      ctx.fillStyle = rgba(col, 0.08);
+      ctx.beginPath();
+      ctx.roundRect?.(ox + pr.x0, oy + pr.y0, pr.x1 - pr.x0, pr.y1 - pr.y0, pr.r);
+      ctx.fill();
+      for (const sb of pk.subs.values()) {
+        const s = sb.plugin.sub;
+        const view = { ...sb, position: { x: ox + sb.position.x, y: oy + sb.position.y }, plugin: sb.plugin, velocity: sb.velocity, circleRadius: sb.circleRadius };
+        const subCharging = ch && ch.hit.subBody === sb;
+        if (subCharging && !reduceMotion()) { ctx.save(); ctx.translate((Math.random() - 0.5) * 3 * chargeK, (Math.random() - 0.5) * 3 * chargeK); }
+        jellyPath(ctx, view, ts, subCharging ? 1.5 * chargeK : 0);
+        ctx.fillStyle = c.surface; ctx.fill();
+        ctx.fillStyle = rgba(col, 0.16); ctx.fill();
+        const sd = dueInfo(s);
+        ctx.strokeStyle = sd ? RING(c, sd.cls) : rgba(col, 0.6); ctx.lineWidth = sd ? 2 : 1.3; ctx.stroke();
+        const sfs = Math.max(8.5, Math.min(11, sb.circleRadius / 2.4));
+        ctx.font = `600 ${sfs}px ${c.sans}`; ctx.fillStyle = c.ink;
+        const sl = wrapLines(ctx, s.text, sb.circleRadius * 1.6, 2);
+        let sy = view.position.y - (sl.length - 1) * sfs * 0.6;
+        for (const line of sl) { ctx.fillText(line, view.position.x, sy); sy += sfs * 1.2; }
+        if (subCharging) ctx.restore();
+      }
+    }
+    ctx.restore();
   }
 
-  // Finished to-dos pop.
+  // The charge line: it grows across the blob, then glows when ready.
+  if (ch) {
+    const b = ch.hit.body;
+    const cx = b.position.x + (ch.hit.subBody ? ch.hit.subBody.position.x : 0);
+    const cy = b.position.y + (ch.hit.subBody ? ch.hit.subBody.position.y : 0);
+    const half = (ch.hit.subBody ? ch.hit.subBody.circleRadius : b.plugin.shape.w / 2) * 1.25;
+    const dx = Math.cos(ch.angle), dy = Math.sin(ch.angle);
+    const sx = cx - dx * half, sy = cy - dy * half;
+    const full = chargeK >= 1;
+    const flicker = ch.blocked && Math.random() < 0.35;
+    ctx.save();
+    ctx.lineCap = "round";
+    ctx.shadowColor = ch.blocked ? c.muted : c.accent;
+    ctx.shadowBlur = full ? 18 + 6 * Math.sin(ts / 60) : 10 * chargeK;
+    ctx.strokeStyle = ch.blocked ? rgba(c.muted, flicker ? 0.2 : 0.9) : (full ? "#fff" : c.accent);
+    ctx.lineWidth = full ? 4 : 2 + 2 * chargeK;
+    if (ch.broken) ctx.setLineDash([6, 8]);
+    ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx + dx * 2 * half * chargeK, sy + dy * 2 * half * chargeK); ctx.stroke();
+    ctx.restore();
+    // Sparks pulled toward the line.
+    if (!reduceMotion() && !ch.blocked && Math.random() < 0.7) {
+      const a = Math.random() * Math.PI * 2, d = half * (0.8 + Math.random() * 0.6);
+      jar.sparks.push({ x: cx + Math.cos(a) * d, y: cy + Math.sin(a) * d, tx: sx + dx * 2 * half * Math.random() * chargeK, ty: sy + dy * 2 * half * Math.random() * chargeK, t0: ts });
+    }
+  }
+  jar.sparks = jar.sparks.filter(s => ts - s.t0 < 380);
+  ctx.fillStyle = c.accent;
+  for (const s of jar.sparks) {
+    const k = (ts - s.t0) / 380;
+    ctx.globalAlpha = 1 - k;
+    ctx.beginPath(); ctx.arc(s.x + (s.tx - s.x) * k, s.y + (s.ty - s.y) * k, 1.8, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // Slice pieces fall and fade; the blade leaves a bright streak.
+  for (const p of jar.pieces) {
+    const k = Math.min(1, (performance.now() - p.plugin.t0) / 1600);
+    ctx.globalAlpha = 1 - k;
+    ctx.beginPath();
+    p.vertices.forEach((v, i) => i ? ctx.lineTo(v.x, v.y) : ctx.moveTo(v.x, v.y));
+    ctx.closePath();
+    ctx.fillStyle = c.surface; ctx.fill();
+    ctx.fillStyle = rgba(p.plugin.color, 0.35); ctx.fill();
+    ctx.strokeStyle = rgba(p.plugin.color, 0.9); ctx.lineWidth = 2; ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+  jar.flashes = jar.flashes.filter(f => performance.now() - f.t0 < 320);
+  for (const f of jar.flashes) {
+    const k = (performance.now() - f.t0) / 320;
+    const dx = Math.cos(f.a), dy = Math.sin(f.a), L = f.len * (0.6 + k);
+    ctx.save();
+    ctx.globalAlpha = 1 - k;
+    ctx.strokeStyle = "#fff"; ctx.shadowColor = c.accent; ctx.shadowBlur = 20; ctx.lineWidth = 5 * (1 - k) + 1; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(f.x - dx * L / 2, f.y - dy * L / 2); ctx.lineTo(f.x + dx * L / 2, f.y + dy * L / 2); ctx.stroke();
+    ctx.restore();
+  }
+  for (const d of jar.drops) {
+    ctx.globalAlpha = 1 - (performance.now() - d.t0) / 700;
+    ctx.fillStyle = rgba(d.c, 0.8);
+    ctx.beginPath(); ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // Finished to-dos (done from the list) pop.
   jar.pops = jar.pops.filter(p => ts - p.t0 < 500);
   for (const p of jar.pops) {
     const k = (ts - p.t0) / 500;
@@ -3118,7 +3744,7 @@ function drawJar(ts) {
   }
 
   if (!bodies.length) {
-    ctx.font = `600 15px ${c.sans}`; ctx.fillStyle = c.muted; ctx.textAlign = "center";
+    ctx.font = `600 15px ${c.sans}`; ctx.fillStyle = c.muted; ctx.textAlign = "center"; ctx.textBaseline = "middle";
     ctx.fillText(state.tasks.length ? "Nothing open. Enjoy it." : "Add your first to-do above. It will drop in here.", W / 2, H / 2);
   }
 }
@@ -3127,7 +3753,9 @@ function jarLoop(ts) {
   if (!jar.wrap?.isConnected) { jar.raf = 0; return; } // paused while you are in the steps
   jar.raf = requestAnimationFrame(jarLoop);
   if (document.hidden || !jar.w) return;
+  for (const b of jar.bodies.values()) stepPocket(b);
   Matter.Engine.update(jar.engine, 1000 / 60);
+  stepEffects(ts);
   drawJar(ts);
 }
 function startJar() {
@@ -3135,6 +3763,371 @@ function startJar() {
 }
 // Time sensitivity changes as the clock moves, so weights are refreshed now and then.
 setInterval(() => { if (jar.wrap?.isConnected) syncJar(); }, 30000);
+
+/* ─── THE GARDEN ────────────────────────────────────────────── */
+// Every sliced to-do lands here as two pieces. They pile up into a living
+// floor (Matter.js), and four trees grow out of it. Each slice feeds one tree.
+const GARDEN_SEEN_KEY = "sharp-axe-garden-seen";
+const GARDEN_MAX_SLICES = 75; // 150 pieces; older slices become soil
+const garden = {
+  engine: null, wrap: null, canvas: null, ctx: null, tip: null,
+  w: 0, h: 0, dpr: 1, pieces: [], queue: [], walls: [], soil: 0,
+  roots: {}, grow: {}, raf: 0, built: false, hover: null,
+};
+
+function seeded(seed) {
+  let s = seed >>> 0 || 1;
+  return () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; };
+}
+
+function ensureGarden() {
+  if (garden.engine || !HAS_PHYSICS) return;
+  if (!jar.colors.ink) readJarColors();
+  // Settled pieces sleep, so a still pile costs almost nothing.
+  garden.engine = Matter.Engine.create({ gravity: { x: 0, y: 1, scale: 0.001 }, enableSleeping: true });
+  garden.canvas = el("canvas", { role: "img", "aria-label": "Your garden: pieces of every finished to-do, with four trees growing from them." });
+  garden.tip = el("div", { class: "jar-tip" });
+  garden.wrap = el("div", { class: "jar garden-jar" }, [garden.canvas, garden.tip]);
+  garden.ctx = garden.canvas.getContext("2d");
+  new ResizeObserver(() => gardenResize()).observe(garden.wrap);
+  garden.canvas.addEventListener("pointermove", (e) => {
+    const r = garden.canvas.getBoundingClientRect(), p = { x: e.clientX - r.left, y: e.clientY - r.top };
+    const hit = Matter.Query.point(garden.pieces, p)[0];
+    garden.hover = hit ? { piece: hit, p } : null;
+    if (!hit) { garden.tip.style.opacity = "0"; return; }
+    const g = hit.plugin.slice;
+    garden.tip.replaceChildren(
+      el("strong", { text: g.text }),
+      el("div", { text: `Sliced ${new Date(g.slicedAt).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}` }),
+      el("div", { class: "tip-dim", text: `Fed the ${g.tree} tree${g.isSub ? " · a sub-bubble" : ""}` }),
+    );
+    garden.tip.style.left = `${Math.min(p.x + 14, garden.w - 250)}px`;
+    garden.tip.style.top = `${Math.max(4, p.y - 70)}px`;
+    garden.tip.style.opacity = "1";
+  });
+  garden.canvas.addEventListener("pointerleave", () => { garden.tip.style.opacity = "0"; });
+  // Poke a piece to make it hop.
+  garden.canvas.addEventListener("pointerdown", (e) => {
+    const r = garden.canvas.getBoundingClientRect(), p = { x: e.clientX - r.left, y: e.clientY - r.top };
+    const hit = Matter.Query.point(garden.pieces, p)[0];
+    if (hit) { Matter.Sleeping.set(hit, false); Matter.Body.setVelocity(hit, { x: (Math.random() - 0.5) * 4, y: -7 }); }
+  });
+}
+
+function gardenResize() {
+  const r = garden.wrap.getBoundingClientRect();
+  if (!r.width || !r.height) return;
+  garden.w = r.width; garden.h = r.height;
+  garden.dpr = window.devicePixelRatio || 1;
+  garden.canvas.width = Math.round(garden.w * garden.dpr);
+  garden.canvas.height = Math.round(garden.h * garden.dpr);
+  buildGarden(true);
+}
+
+// Make the pieces from the garden list. Older slices become a soil band.
+function buildGarden(force = false) {
+  if (!garden.engine || !garden.w) return;
+  const { Bodies, Composite } = Matter;
+  const slices = state.garden;
+  const key = `${slices.length}:${slices[slices.length - 1]?.id}:${garden.w}:${garden.h}`;
+  if (!force && garden.built === key) return;
+  garden.built = key;
+  Composite.clear(garden.engine.world, false);
+  garden.pieces = []; garden.queue = [];
+  const older = Math.max(0, slices.length - GARDEN_MAX_SLICES);
+  garden.soil = older ? Math.min(90, 10 + Math.sqrt(older) * 5) : 6;
+  const W = garden.w, H = garden.h, T = 80, o = { isStatic: true, friction: 0.6 };
+  garden.walls = [
+    Bodies.rectangle(W / 2, H - garden.soil + T / 2, W + 2 * T, T, o),
+    Bodies.rectangle(-T / 2, H / 2, T, H * 3, o),
+    Bodies.rectangle(W + T / 2, H / 2, T, H * 3, o),
+  ];
+  Composite.add(garden.engine.world, garden.walls);
+  const k = Math.max(0.6, Math.min(1, W / 700));
+  slices.slice(-GARDEN_MAX_SLICES).forEach((g, i) => {
+    const rnd = seeded(hashStr(String(g.id)));
+    const r = (g.isSub ? 9 : 13 + 11 * lenOf(g.duration || 30)) * k;
+    const N = 12;
+    const pts = Array.from({ length: N }, (_, j) => {
+      const a = (j / N) * Math.PI * 2;
+      const rr = r * (0.85 + rnd() * 0.25);
+      return { x: Math.cos(a) * rr, y: Math.sin(a) * rr };
+    });
+    const { halves } = splitPolygon(pts, { x: 0, y: 0 }, rnd() * Math.PI);
+    const x = 30 + rnd() * (W - 60);
+    halves.forEach((h, j) => garden.queue.push({ h, x: x + (j ? 6 : -6), slice: g }));
+  });
+}
+
+function spawnGardenPieces() {
+  const { Bodies, Composite } = Matter;
+  for (let n = 0; n < 4 && garden.queue.length; n++) {
+    const q = garden.queue.shift();
+    const cx = q.h.reduce((a, p) => a + p.x, 0) / q.h.length, cy = q.h.reduce((a, p) => a + p.y, 0) / q.h.length;
+    const piece = Bodies.fromVertices(q.x + cx, -30 - Math.random() * 60, [q.h.map(p => ({ x: p.x, y: p.y }))], {
+      friction: 0.8, restitution: 0.15, frictionAir: 0.01, density: 0.002,
+    });
+    if (!piece) continue;
+    Matter.Body.setAngle(piece, Math.random() * Math.PI * 2);
+    piece.plugin.slice = q.slice;
+    piece.plugin.seed = Math.random() * 10;
+    garden.pieces.push(piece);
+    Composite.add(garden.engine.world, piece);
+  }
+}
+
+// How many slices each tree has. Trees grow from the previous count to the
+// new one with a short animation, so you can see what changed since last time.
+function treeCounts() {
+  const c = Object.fromEntries(TREES.map(t => [t, 0]));
+  state.garden.forEach(g => { if (c[g.tree] != null) c[g.tree]++; });
+  return c;
+}
+function startTreeGrowth() {
+  let seen = {};
+  try { seen = JSON.parse(localStorage.getItem(GARDEN_SEEN_KEY) || "{}"); } catch {}
+  const now = performance.now(), counts = treeCounts();
+  TREES.forEach(t => { garden.grow[t] = { from: Math.min(seen[t] ?? counts[t], counts[t]), to: counts[t], t0: now + 700 }; });
+  try { localStorage.setItem(GARDEN_SEEN_KEY, JSON.stringify(counts)); } catch {}
+}
+function treeSize(name, ts) {
+  const g = garden.grow[name];
+  if (!g) return treeCounts()[name];
+  const k = Math.max(0, Math.min(1, (ts - g.t0) / 1600));
+  const e = 1 - Math.pow(1 - k, 3);
+  return g.from + (g.to - g.from) * e;
+}
+
+// Height of the pile under x, so trees stand on top of it.
+function pileTop(x) {
+  let top = garden.h - garden.soil;
+  for (const p of garden.pieces) {
+    const b = p.bounds;
+    if (b.min.x < x + 14 && b.max.x > x - 14 && p.speed < 1.5) top = Math.min(top, b.min.y + 4);
+  }
+  return top;
+}
+
+function drawTree(ctx, name, x, y, n, ts, c) {
+  const rnd = seeded(hashStr(name));
+  const H = garden.h;
+  const trunk = Math.min(H * 0.24, 14 + 9 * Math.sqrt(n));
+  const depth = Math.min(6, Math.floor(1 + Math.log2(n + 1) * 1.4));
+  const width = Math.min(12, 2 + Math.sqrt(n) * 1.3);
+  const spread = 0.35 + rnd() * 0.25;
+  const leafColor = c.good;
+  const leaves = [];
+  const branch = (x0, y0, ang, len, w, d) => {
+    const sway = reduceMotion() ? 0 : Math.sin(ts / 1400 + d * 0.7 + x0 * 0.01) * 0.035 * d;
+    const a = ang + sway;
+    const x1 = x0 + Math.cos(a) * len, y1 = y0 + Math.sin(a) * len;
+    ctx.strokeStyle = c.trunk; ctx.lineWidth = Math.max(1, w); ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+    if (d >= depth) { leaves.push([x1, y1, d]); return; }
+    const kids = d >= 2 && d <= 3 && rnd() < 0.35 ? 3 : 2;
+    for (let i = 0; i < kids; i++) {
+      const off = (i - (kids - 1) / 2) * spread * 2 + (rnd() - 0.5) * 0.25;
+      branch(x1, y1, a + off, len * (0.68 + rnd() * 0.12), w * 0.68, d + 1);
+    }
+    if (d >= depth - 2) leaves.push([x1, y1, d]);
+  };
+  branch(x, y, -Math.PI / 2 + (rnd() - 0.5) * 0.1, trunk, width, 1);
+  const leafR = Math.min(9, 3 + Math.sqrt(n) * 0.9);
+  leaves.forEach(([lx, ly], i) => {
+    const bob = reduceMotion() ? 0 : Math.sin(ts / 700 + i) * 1.2;
+    ctx.fillStyle = rgba(leafColor, 0.55 + 0.35 * ((i * 37) % 10) / 10);
+    ctx.beginPath(); ctx.arc(lx, ly + bob, leafR * (0.8 + ((i * 13) % 5) / 10), 0, Math.PI * 2); ctx.fill();
+  });
+  if (n === 0) {
+    ctx.fillStyle = rgba(leafColor, 0.8);
+    ctx.beginPath(); ctx.ellipse(x - 4, y - 8, 4, 2.5, -0.6, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(x + 4, y - 9, 4, 2.5, 0.6, 0, Math.PI * 2); ctx.fill();
+  }
+}
+
+function drawGarden(ts) {
+  const ctx = garden.ctx, c = { ...jar.colors }, W = garden.w, H = garden.h;
+  c.trunk = "#8a5a3b";
+  ctx.setTransform(garden.dpr, 0, 0, garden.dpr, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+  const sky = ctx.createLinearGradient(0, 0, 0, H);
+  sky.addColorStop(0, rgba(c.q2, 0.08));
+  sky.addColorStop(1, rgba(c.good, 0.08));
+  ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
+  // Soil (older slices pressed down).
+  ctx.fillStyle = "rgba(120, 82, 52, 0.55)";
+  ctx.fillRect(0, H - garden.soil, W, garden.soil);
+
+  // Trees grow from the top of the pile.
+  TREES.forEach((name, i) => {
+    const x = W * (0.13 + i * 0.247);
+    const target = pileTop(x);
+    garden.roots[name] = garden.roots[name] == null ? target : garden.roots[name] + (target - garden.roots[name]) * 0.05;
+    drawTree(ctx, name, x, garden.roots[name], treeSize(name, ts), ts, c);
+  });
+
+  // Pieces: wobbly, coloured by importance.
+  for (const p of garden.pieces) {
+    const g = p.plugin.slice, col = { q1: c.q1, q2: c.q2, quick: c.quick, q4: c.q4 }[g.quadrant] || c.muted;
+    const s = p.plugin.seed, cx = p.position.x, cy = p.position.y;
+    ctx.beginPath();
+    p.vertices.forEach((v, i) => {
+      const k = reduceMotion() ? 1 : 1 + 0.04 * Math.sin(ts / 500 + s + i * 1.7);
+      const x = cx + (v.x - cx) * k, y = cy + (v.y - cy) * k;
+      i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+    });
+    ctx.closePath();
+    ctx.fillStyle = c.surface; ctx.fill();
+    ctx.fillStyle = rgba(col, garden.hover?.piece === p ? 0.55 : 0.32); ctx.fill();
+    ctx.strokeStyle = rgba(col, 0.85); ctx.lineWidth = 1.5; ctx.stroke();
+  }
+
+  // Tree labels sit on the soil.
+  ctx.font = `800 12px ${c.head}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  const counts = treeCounts();
+  TREES.forEach((name, i) => {
+    const x = W * (0.13 + i * 0.247), y = H - 14;
+    const label = `${name} · ${counts[name]}`;
+    const tw = ctx.measureText(label).width + 16;
+    ctx.fillStyle = rgba(c.surface, 0.9);
+    ctx.beginPath(); ctx.roundRect?.(x - tw / 2, y - 10, tw, 20, 10); ctx.fill();
+    ctx.fillStyle = c.ink; ctx.fillText(label, x, y + 1);
+  });
+
+  if (!state.garden.length) {
+    ctx.font = `600 15px ${c.sans}`; ctx.fillStyle = c.muted;
+    ctx.fillText("Slice your first to-do to plant the garden.", W / 2, H * 0.4);
+  }
+}
+
+function gardenLoop(ts) {
+  if (!garden.wrap?.isConnected) { garden.raf = 0; return; }
+  garden.raf = requestAnimationFrame(gardenLoop);
+  if (document.hidden || !garden.w) return;
+  spawnGardenPieces();
+  // Still alive: now and then a piece gives a little hop.
+  if (!reduceMotion() && garden.pieces.length && Math.random() < 0.03) {
+    const p = garden.pieces[Math.floor(Math.random() * garden.pieces.length)];
+    Matter.Sleeping.set(p, false);
+    Matter.Body.setVelocity(p, { x: (Math.random() - 0.5) * 1.5, y: -1.5 - Math.random() * 2 });
+  }
+  Matter.Engine.update(garden.engine, 1000 / 60);
+  drawGarden(ts);
+}
+
+/* ---- progress numbers ---- */
+function dayKey(ms) { return isoOf(new Date(ms)); }
+function gardenStats() {
+  const g = state.garden, now = Date.now();
+  const weekAgo = now - 7 * 86400e3;
+  const days = new Set(g.map(x => dayKey(x.slicedAt)));
+  let streak = 0;
+  for (let d = new Date(); ; d = addDays(d, -1)) {
+    if (days.has(isoOf(d))) streak++;
+    else if (streak || isoOf(d) !== todayISO()) break; // today can still be empty
+  }
+  const withDue = g.filter(x => x.onTime != null);
+  const byDay = Array.from({ length: 14 }, (_, i) => {
+    const d = addDays(new Date(), i - 13), k = isoOf(d);
+    return { label: d.toLocaleDateString(undefined, { weekday: "narrow" }), date: k, n: g.filter(x => dayKey(x.slicedAt) === k).length };
+  });
+  const tags = new Map();
+  g.forEach(x => (x.tags || []).forEach(t => tags.set(t, (tags.get(t) || 0) + 1)));
+  return {
+    total: g.length,
+    week: g.filter(x => x.slicedAt >= weekAgo).length,
+    streak,
+    onTime: withDue.filter(x => x.onTime).length, withDue: withDue.length,
+    focus: g.reduce((n, x) => n + (x.focusMin || 0), 0),
+    byDay, tags: [...tags.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8),
+  };
+}
+
+function renderGarden() {
+  const s = gardenStats();
+  const wrap = el("div", {}, [
+    el("div", { class: "phase-header" }, [
+      el("h1", { class: "phase-title", text: "Your garden" }),
+      el("p", { class: "phase-sub", text: "Every to-do you slice falls here. The pieces build the ground, and your trees grow from them." }),
+    ]),
+  ]);
+  if (HAS_PHYSICS) {
+    ensureGarden();
+    wrap.appendChild(garden.wrap);
+    setTimeout(() => {
+      if (!garden.w) gardenResize(); else buildGarden();
+      startTreeGrowth();
+      if (!garden.raf) garden.raf = requestAnimationFrame(gardenLoop);
+    }, 0);
+  }
+
+  const stat = (v, label) => el("div", { class: "stat" }, [el("div", { class: "stat-value", text: String(v) }), el("div", { class: "stat-label", text: label })]);
+  wrap.appendChild(el("div", { class: "stats-banner garden-stats" }, [
+    stat(s.week, "Sliced this week"),
+    stat(s.streak, s.streak === 1 ? "Day in a row" : "Days in a row"),
+    stat(s.withDue ? `${s.onTime}/${s.withDue}` : "–", "Done before due"),
+    stat(s.focus ? minutesText(s.focus) : "–", "Focus time"),
+    stat(s.total, "All time"),
+  ]));
+
+  const max = Math.max(1, ...s.byDay.map(d => d.n));
+  wrap.appendChild(el("div", { class: "section" }, [
+    el("span", { class: "section-label", text: "Last 14 days" }),
+    el("div", { class: "day-bars" }, s.byDay.map(d => el("div", { class: "day-bar", title: `${d.date}: ${plural(d.n, "slice")}` }, [
+      el("div", { class: "day-bar-fill", style: { height: `${(d.n / max) * 100}%` } }),
+      el("span", { text: d.label }),
+    ]))),
+  ]));
+
+  const counts = treeCounts();
+  wrap.appendChild(el("div", { class: "section" }, [
+    el("span", { class: "section-label", text: "Trees" }),
+    el("div", { class: "hint", text: "Each slice feeds one tree. For now the tree is picked at random." }),
+    el("div", { class: "tree-chips" }, TREES.map(t => el("span", { class: "badge", style: { "--c": "var(--good)" }, text: `🌳 ${t}: ${counts[t]}` }))),
+  ]));
+
+  if (s.tags.length) {
+    const tmax = s.tags[0][1];
+    wrap.appendChild(el("div", { class: "section" }, [
+      el("span", { class: "section-label", text: "Slices by tag" }),
+      ...s.tags.map(([t, n]) => el("div", { class: "tag-bar" }, [
+        el("span", { text: `#${t}` }),
+        el("div", { class: "fill-track", style: { width: "100%" } }, [el("div", { style: { width: `${(n / tmax) * 100}%` } })]),
+        el("span", { text: String(n) }),
+      ])),
+    ]));
+  }
+
+  const recent = state.garden.slice(-25).reverse();
+  wrap.appendChild(el("div", { class: "section" }, [
+    el("span", { class: "section-label", text: "Recent slices" }),
+    recent.length ? el("div", { class: "task-list" }, recent.map(g => {
+      const t = taskById(g.taskId);
+      const when = new Date(g.slicedAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+      return el("details", { class: "slice-row" }, [
+        el("summary", {}, [
+          el("span", { class: "up-text", text: g.isSub ? `${g.text} (part of ${t?.text || "a to-do"})` : g.text }),
+          g.onTime == null ? null : el("span", { class: `badge ${g.onTime ? "calm" : "past"}`, text: g.onTime ? "Before due" : "After due" }),
+          el("span", { class: "badge", style: { "--c": "var(--good)" }, text: g.tree }),
+          el("span", { class: "hint", style: { margin: 0 }, text: when }),
+        ]),
+        el("div", { class: "slice-more" }, [
+          g.details || t?.details ? el("p", { text: g.details || t.details }) : el("p", { class: "hint", text: "No details were written." }),
+          g.focusMin ? el("p", { text: `Focus time: ${minutesText(g.focusMin)}` }) : null,
+          t && !g.isSub ? historyBlock(t) : null,
+        ]),
+      ]);
+    })) : el("div", { class: "empty small", text: "Nothing sliced yet. Go slice something!" }),
+  ]));
+  return wrap;
+}
+
+function openGarden() {
+  _view = "garden";
+  _openFor = null;
+  render(true);
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
 
 /* ---- home editor, list rows, and the page ---- */
 // "Must finish first": chips you can remove, plus a menu to add one.
@@ -3159,13 +4152,113 @@ function linksEditor(t) {
   ]);
 }
 
+// "Due": the deadline. Date, plus an optional time.
+function dueFields(x, owner, label) {
+  const change = () => {
+    logEvent(owner, "due changed", `${label}${x.dueDate ? `${x.dueDate}${x.dueTime ? " " + x.dueTime : ""}` : "no due date"}`);
+    saveState(); render();
+  };
+  return [
+    el("input", { type: "date", "aria-label": "Due date", value: x.dueDate || "", onchange: (e) => { x.dueDate = e.target.value; if (!x.dueDate) x.dueTime = ""; change(); } }),
+    el("input", { type: "time", "aria-label": "Due time (optional)", value: x.dueTime || "", onchange: (e) => { x.dueTime = e.target.value; if (x.dueTime && !x.dueDate) x.dueDate = todayISO(); change(); } }),
+  ];
+}
+function durationSelect(x, owner, options = DURATIONS) {
+  const sel = el("select", { "aria-label": "Takes about", onchange: (e) => {
+    x.duration = Number(e.target.value);
+    logEvent(owner, "takes about", `${owner === x ? "" : x.text + ": "}${durLabel(x.duration)}`);
+    saveState(); render();
+  } }, options.map(m => el("option", { value: String(m), text: durLabel(m) })));
+  sel.value = String(x.duration || options[1]);
+  return sel;
+}
+// A live "Overdue in …" line.
+function dueLine(x) {
+  const i = dueInfo(x);
+  return el("div", { class: "due-line" }, i
+    ? [el("span", { class: `badge ${i.cls}`, "data-due": String(x.id), "data-long": "1", text: i.long })]
+    : [el("span", { class: "hint", style: { margin: 0 }, text: "No due date. Add one to see a countdown." })]);
+}
+
+const SUB_DURATIONS = [5, 10, 15, 30, 45, 60, 90, 120];
+let _subDetailsOpen = null;
+function subBubblesEditor(t) {
+  const list = el("div", { class: "subs" });
+  t.steps.forEach(s => {
+    const open = _subDetailsOpen === s.id;
+    list.appendChild(el("div", { class: `sub-row ${s.done ? "done" : ""}` }, [
+      el("div", { class: "sub-top" }, [
+        el("span", {
+          class: "check-circle", role: "checkbox", "aria-checked": String(s.done), tabindex: "0",
+          title: s.done ? "Not done after all" : "Slice it (done)", html: s.done ? SVG.check : "",
+          onclick: (e) => s.done ? (setSubDone(t, s, false), saveState(), render()) : sliceSub(t, s, e.currentTarget),
+          onkeydown: (e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); e.currentTarget.click(); } },
+        }),
+        el("input", { type: "text", class: "sub-text", value: s.text, "aria-label": "Sub-bubble",
+          oninput: (e) => { s.text = e.target.value; saveState(); } }),
+        dueInfo(s) && !s.done ? el("span", { class: `badge ${dueInfo(s).cls}`, text: dueInfo(s).short }) : null,
+        el("button", { class: `icon-btn ${open ? "on" : ""}`, type: "button", title: "Due, time and details", "aria-label": "More", html: SVG.edit,
+          onclick: () => { _subDetailsOpen = open ? null : s.id; render(); } }),
+        el("button", { class: "icon-btn danger", type: "button", "aria-label": "Remove sub-bubble", html: SVG.x,
+          onclick: () => { t.steps = t.steps.filter(x => x.id !== s.id); logEvent(t, "sub removed", s.text); saveState(); render(); } }),
+      ]),
+      open ? el("div", { class: "sub-more" }, [
+        el("div", { class: "controls" }, [el("span", { class: "mini-label", text: "Due" }), ...dueFields(s, t, `${s.text}: `),
+          el("span", { class: "mini-label", text: "Takes about" }), durationSelect(s, t, SUB_DURATIONS)]),
+        dueInfo(s) ? dueLine(s) : null,
+        el("textarea", { class: "sub-details", placeholder: "Details for this part…", value: s.details || "",
+          oninput: (e) => { s.details = e.target.value; saveState(); } }),
+      ]) : null,
+    ]));
+  });
+  const inputId = "sub-input";
+  const add = () => {
+    const v = ($(`#${inputId}`)?.value || "").trim();
+    if (!v) return;
+    t.steps.push(normalizeStep({ text: v }));
+    logEvent(t, "sub added", v);
+    saveState(); render();
+    setTimeout(() => $(`#${inputId}`)?.focus(), 0);
+  };
+  return el("div", {}, [
+    el("span", { class: "section-label", text: `Sub-bubbles${t.steps.length ? ` (${t.steps.filter(x => x.done).length}/${t.steps.length} done)` : ""}` }),
+    el("div", { class: "hint", text: "Break it into smaller parts. They float inside the bubble, and you can slice each one." }),
+    list,
+    el("div", { class: "input-row", style: { margin: 0 } }, [
+      el("input", { type: "text", id: inputId, placeholder: t.steps.length ? "Add another part…" : "First small part? (for example: open the file)",
+        onkeydown: (e) => { if (e.key === "Enter") add(); } }),
+      el("button", { class: "btn btn-sm", type: "button", html: SVG.plus, "aria-label": "Add sub-bubble", onclick: add }),
+    ]),
+  ]);
+}
+
+const HISTORY_LABEL = {
+  created: "Created", "importance": "Importance", "due changed": "Due date", "takes about": "Takes about",
+  tags: "Tags", details: "Details edited", "sub added": "Sub-bubble added", "sub removed": "Sub-bubble removed",
+  "sub sliced": "Sub-bubble sliced", "sub reopened": "Sub-bubble reopened", linked: "Linked", sliced: "Sliced (done)",
+  reopened: "Reopened", renamed: "Renamed",
+};
+function historyBlock(t) {
+  const items = (t.history || []).slice().reverse();
+  const when = (ms) => new Date(ms).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  return el("details", { class: "history" }, [
+    el("summary", { text: `History (${items.length})${t.focusMin ? ` · ${minutesText(t.focusMin)} focused` : ""}` }),
+    el("ol", { class: "history-list" }, items.length
+      ? items.map(h => el("li", {}, [
+          el("span", { class: "history-when", text: when(h.at) }),
+          el("span", {}, [el("strong", { text: HISTORY_LABEL[h.type] || h.type }), h.detail ? ` · ${h.detail}` : ""]),
+        ]))
+      : [el("li", { class: "hint", text: "Nothing yet." })]),
+  ]);
+}
+
 function homeEditor(t) {
   const textIn = el("input", { type: "text", value: t.text, "aria-label": "Task", oninput: (e) => { t.text = e.target.value; saveState(); } });
-  textIn.addEventListener("change", () => syncJar());
-  const durSel = el("select", { "aria-label": "How long", onchange: (e) => { t.duration = Number(e.target.value); saveState(); render(); } },
-    DURATIONS.map(m => el("option", { value: String(m), text: durLabel(m) })));
-  durSel.value = String(t.duration || 30);
+  textIn.addEventListener("change", () => { logEvent(t, "renamed", t.text); saveState(); syncJar(); });
   const blocked = waitingOn(t);
+  const details = el("textarea", { class: "details-box", placeholder: "Explain this to-do: what done looks like, links, notes to yourself…",
+    value: t.details || "", oninput: (e) => { t.details = e.target.value; saveState(); } });
+  details.addEventListener("change", () => { logEvent(t, "details", t.details.slice(0, 60)); saveState(); });
   return el("div", { class: "home-editor" }, [
     textIn,
     el("div", {}, [
@@ -3173,19 +4266,25 @@ function homeEditor(t) {
       el("div", { class: "seg" }, [
         ...QUADRANTS.map(q => el("button", {
           type: "button", class: t.quadrant === q.id ? "active" : "", text: q.label, title: q.sub,
-          onclick: () => { t.quadrant = q.id; saveState(); render(); },
+          onclick: () => { t.quadrant = q.id; logEvent(t, "importance", q.label); saveState(); render(); },
         })),
-        el("button", { type: "button", class: t.quadrant ? "" : "active", text: "Not sure", onclick: () => { t.quadrant = null; saveState(); render(); } }),
+        el("button", { type: "button", class: t.quadrant ? "" : "active", text: "Not sure", onclick: () => { t.quadrant = null; logEvent(t, "importance", "Not sure"); saveState(); render(); } }),
       ]),
     ]),
-    el("div", {}, [
-      el("span", { class: "section-label", text: "When and how long?" }),
-      el("div", { class: "controls" }, [
-        el("input", { type: "date", "aria-label": "Date", value: t.date || "", onchange: (e) => { t.date = e.target.value; saveState(); render(); } }),
-        el("input", { type: "time", "aria-label": "Start time", value: t.scheduledTime || "", onchange: (e) => { t.scheduledTime = e.target.value; saveState(); render(); } }),
-        durSel,
+    el("div", { class: "due-grid" }, [
+      el("div", {}, [
+        el("span", { class: "section-label", text: "Due" }),
+        el("div", { class: "controls" }, dueFields(t, t, "")),
       ]),
-      clashNote(t),
+      el("div", {}, [
+        el("span", { class: "section-label", text: "Takes about" }),
+        el("div", { class: "controls" }, [durationSelect(t, t)]),
+      ]),
+    ]),
+    dueLine(t),
+    el("div", {}, [
+      el("span", { class: "section-label", text: "Details" }),
+      details,
     ]),
     el("div", {}, [
       el("span", { class: "section-label", text: "Tags" }),
@@ -3193,13 +4292,14 @@ function homeEditor(t) {
       el("datalist", { id: "bucketNames" }, tagNames().map(n => el("option", { value: n }))),
     ]),
     linksEditor(t),
-    stepsBlock(t),
+    subBubblesEditor(t),
+    historyBlock(t),
     el("div", { class: "controls" }, [
       el("button", {
         class: `btn btn-sm ${blocked.length ? "" : "btn-good"}`, type: "button",
-        html: `${blocked.length ? "🔒" : SVG.check}<span>Done</span>`,
-        title: blocked.length ? `Finish “${blocked[0].text}” first` : "Mark done",
-        onclick: (e) => { if (completeTask(t, e.currentTarget)) _openFor = null; render(); },
+        html: `${blocked.length ? "🔒" : "⚔"}<span>Slice it (done)</span>`,
+        title: blocked.length ? `Finish “${blocked[0].text}” first` : "Mark done. Tip: hold right-click on a bubble to slice it.",
+        onclick: (e) => sliceTask(t, e.currentTarget),
       }),
       el("button", { class: "btn btn-sm btn-dark", type: "button", text: "Close", onclick: () => { _openFor = null; render(); } }),
       el("button", { class: "btn btn-sm btn-ghost", type: "button", html: `${SVG.trash}<span>Delete</span>`, onclick: () => {
@@ -3222,14 +4322,14 @@ function homeRow(t) {
         onkeydown: (e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); completeTask(t, e.currentTarget); } },
       }),
       el("span", { class: "up-text", text: t.text }),
-      timeBadge(t) || (t.date ? el("span", { class: "badge", text: whenText(t) }) : null),
+      dueBadge(t),
       blockedBadge(t),
       ...tagBadges(t),
-      t.steps?.length ? el("span", { class: "badge", text: stepsLeft ? `${plural(stepsLeft, "step")} left` : "Steps done" }) : null,
+      t.steps?.length ? el("span", { class: "badge", text: stepsLeft ? `${stepsLeft} of ${t.steps.length} parts left` : "Parts done" }) : null,
       q ? badgeFor(t) : null,
       el("button", {
         class: "icon-btn", type: "button", html: SVG.edit,
-        title: "Edit: importance, time, tags, links, tiny steps", "aria-label": "Edit", "aria-expanded": String(open),
+        title: "Edit: importance, due, details, tags, links, sub-bubbles", "aria-label": "Edit", "aria-expanded": String(open),
         onclick: () => { _openFor = open ? null : t.id; _stepsOpenFor = _openFor; render(); },
       }),
     ]),
@@ -3338,7 +4438,7 @@ function renderHome() {
         el("span", {
           class: "check-circle", role: "checkbox", "aria-checked": "true", tabindex: "0",
           title: "Not done after all", html: SVG.check,
-          onclick: () => { t.done = false; saveState(); render(); },
+          onclick: () => { reopenTask(t); saveState(); render(); },
         }),
         el("span", { class: "up-text", text: t.text }),
       ])));
@@ -3346,6 +4446,17 @@ function renderHome() {
     }
     wrap.appendChild(sec);
   }
+
+  wrap.appendChild(el("button", { class: "garden-link", type: "button", onclick: openGarden }, [
+    el("span", { class: "garden-link-icon", text: "🌱" }),
+    el("span", {}, [
+      el("strong", { text: "Your garden" }),
+      el("span", { class: "hint", style: { margin: 0, display: "block" }, text: state.garden.length
+        ? `${plural(state.garden.length, "slice")} so far. See your progress and your trees.`
+        : "Slice a to-do (hold right-click on a bubble) to plant your garden." }),
+    ]),
+    el("span", { html: ARROW_SVG }),
+  ]));
 
   const started = state.phase > 0;
   wrap.appendChild(el("div", { class: "session-card" }, [
@@ -3422,11 +4533,11 @@ function render(animate = false) {
   content.classList.remove("enter");
   if (animate) { void content.offsetWidth; content.classList.add("enter"); }
 
-  const home = _view === "home";
+  const home = _view === "home" || _view === "garden";
   $("#nav").style.display = home ? "none" : "";
   $("#pips").classList.toggle("on-home", home);
   if (home) {
-    content.appendChild(renderHome());
+    content.appendChild(_view === "garden" ? renderGarden() : renderHome());
     $("#quoteSlot").innerHTML = "";
     return;
   }
@@ -3450,7 +4561,7 @@ function render(animate = false) {
     nextBtn.querySelector("svg").outerHTML = SVG.refresh;
     nextBtn.onclick = () => {
       if (confirm("Reset and start a new session? Your current session will be cleared from this browser. (Use Save Session first if you want a copy.)")) {
-        state = defaultState();
+        state = { ...defaultState(), garden: state.garden };
         saveState(); render(true);
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
@@ -3508,7 +4619,11 @@ function exportTodos() {
       scheduledTime: t.scheduledTime || "",
       date: t.date || "",
       duration: t.duration || 30,
-      steps: (t.steps || []).map(s => ({ text: s.text, done: !!s.done })),
+      dueDate: t.dueDate || "", dueTime: t.dueTime || "",
+      details: t.details || "",
+      createdAt: t.createdAt, doneAt: t.doneAt, focusMin: t.focusMin || 0,
+      history: t.history || [],
+      steps: (t.steps || []).map(({ id, ...rest }) => rest),
     })),
   };
   downloadBlob(
@@ -3610,8 +4725,11 @@ function downloadFullSession() {
       const extra = [
         ...(t.tags || []).map(x => `#${x}`),
         ...waitingOn(t).map(p => `(after: ${p.text})`),
-      ].join(" ");
+        t.dueDate ? `(due ${t.dueDate}${t.dueTime ? " " + t.dueTime : ""})` : "",
+      ].filter(Boolean).join(" ");
       lines.push(`${i + 1}. ${mark(t)}${t.text}${extra ? `  ${extra}` : ""}`);
+      if (t.details) lines.push(`      ${t.details.replace(/\n/g, "\n      ")}`);
+      (t.steps || []).forEach(s => lines.push(`      ${s.done ? "[x]" : "[ ]"} ${s.text}`));
     });
   }
   lines.push("");
@@ -3654,6 +4772,12 @@ function downloadFullSession() {
   const pct = active.length > 0 ? Math.round((done / active.length) * 100) : 0;
   lines.push("--- TRIAGE ---");
   lines.push(`Completed: ${done} / ${active.length} (${pct}%)`);
+  lines.push("");
+
+  lines.push("--- GARDEN ---");
+  const gs = gardenStats(), tc = treeCounts();
+  lines.push(`Sliced all time: ${gs.total} · this week: ${gs.week} · days in a row: ${gs.streak}`);
+  lines.push(`Trees: ${TREES.map(t => `${t} ${tc[t]}`).join(", ")}`);
   lines.push("");
 
   lines.push("--- REFLECTION ---");
@@ -3867,6 +4991,7 @@ $("#miExport").addEventListener("click", () => { closeMenu(); exportTodos(); });
 $("#miSaveAll").addEventListener("click", () => { closeMenu(); downloadFullSession(); });
 $("#fileInput").addEventListener("change", handleFileImport);
 $("#miDrive").addEventListener("click", () => { closeMenu(); driveConnect(); });
+$("#miGarden").addEventListener("click", () => { closeMenu(); openGarden(); });
 $("#miDriveOff").addEventListener("click", () => {
   closeMenu();
   drive.on = false; drive.token = ""; driveStore();
