@@ -650,6 +650,8 @@
   .clash { font-size: 12.5px; color: var(--ink-mid); padding: 8px 0 0 26px; }
   .clash strong { color: var(--ink); }
   .badge.bucket-tag { --c: var(--bucket); }
+  .badge.lock { --c: var(--ink-muted); }
+  input[type="text"].tags-input { width: auto; flex: 1; min-width: 160px; padding: 7px 10px; font-size: 13px; }
 
   /* ─── GENTLE COUNTDOWNS ─────────────────────────────────────────── */
   .badge.calm  { --c: var(--steel); }
@@ -701,6 +703,51 @@
   .session-card-body { flex: 1; min-width: 200px; }
   .session-card-title { font-family: var(--head); font-size: 18px; font-weight: 800; color: var(--ink); }
   .session-card-sub { font-size: 13px; color: var(--ink-mid); }
+
+  /* ─── TO-DO JAR ─────────────────────────────────────────────────── */
+  .jar {
+    position: relative;
+    height: clamp(380px, 68vh, 720px);
+    background: var(--surface);
+    border: 1.5px solid var(--line);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    user-select: none; -webkit-user-select: none;
+  }
+  .jar canvas { display: block; width: 100%; height: 100%; }
+  .jar-tip {
+    position: absolute; z-index: 5; pointer-events: none; opacity: 0;
+    max-width: 230px; padding: 8px 10px; border-radius: 8px;
+    background: var(--ink); color: var(--bg); font-size: 12.5px; line-height: 1.4;
+    transition: opacity 0.12s ease;
+  }
+  .jar-tip strong { display: block; font-size: 13.5px; }
+  .jar-menu {
+    position: absolute; z-index: 6; display: none; min-width: 160px;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+    box-shadow: 0 14px 36px rgba(0, 0, 0, 0.18); padding: 5px;
+  }
+  .jar-menu.open { display: block; }
+  .jar-menu button {
+    display: block; width: 100%; text-align: left; padding: 8px 10px;
+    border: none; background: transparent; border-radius: 7px;
+    font-size: 14px; font-weight: 600; color: var(--ink); cursor: pointer;
+  }
+  .jar-menu button:hover, .jar-menu button:focus-visible { background: var(--surface-2); outline: none; }
+  .jar-menu button.danger { color: var(--q1); }
+  .jar-editor { margin-top: 12px; }
+  .tag-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: -2px 0 12px; }
+  .tag-chip {
+    padding: 4px 10px; border-radius: 99px; cursor: pointer;
+    border: 1.5px solid var(--line); background: var(--surface);
+    font-size: 12.5px; font-weight: 700; color: var(--ink-mid);
+  }
+  .tag-chip.active { background: var(--bucket); border-color: var(--bucket); color: #fff; }
+  .link-hint { margin: -4px 0 10px; color: var(--accent-ink); font-weight: 600; }
+  .home-row.blocked .up-text { color: var(--ink-muted); }
+  .badge-x { border: none; background: none; color: inherit; cursor: pointer; padding: 0 0 0 2px; display: inline-flex; vertical-align: middle; }
+  .badge-x svg { width: 11px; height: 11px; }
 
   /* ─── TIP CALLOUT ───────────────────────────────────────────────── */
   .tip {
@@ -770,6 +817,7 @@
     .gcal-btn { margin-left: 0; }
     .clash { padding-left: 0; }
     .home-editor { padding-left: 14px; }
+    .jar { height: clamp(360px, 62vh, 560px); }
     .focus-card { padding: 18px; }
     .focus-text { font-size: 22px; }
     .timer { width: 100%; }
@@ -884,6 +932,9 @@
 
 <div class="toast" id="toast"></div>
 
+<!-- Physics: Matter.js, plus its attractors plugin for tag groups. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.20.0/matter.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/matter-attractors@0.1.6/build/matter-attractors.min.js"></script>
 <script>
 /* ============================================================
    Sharp Axe Method - single-file app
@@ -1015,7 +1066,11 @@ function normalizeTask(t) {
     scheduledTime: typeof t.scheduledTime === "string" ? t.scheduledTime : "",
     date: typeof t.date === "string" ? t.date : "",
     duration: Number(t.duration) || 30,
-    bucket: typeof t.bucket === "string" ? t.bucket.trim() : "",
+    // Tags (many per task). Older saves had one "bucket": it becomes the first tag.
+    tags: [...new Set((Array.isArray(t.tags) ? t.tags : [t.bucket])
+      .filter(x => typeof x === "string" && x.trim()).map(x => x.trim()))],
+    // Ids of tasks that must be finished before this one.
+    after: Array.isArray(t.after) ? t.after.filter(x => x != null && x !== t.id) : [],
     steps: Array.isArray(t.steps)
       ? t.steps.filter(s => s && typeof s.text === "string").map(s => ({ id: s.id || uid(), text: s.text, done: !!s.done }))
       : [],
@@ -1197,11 +1252,48 @@ function blockWhen(b) {
   return `${b.weekly ? `Every ${r[0].toLocaleDateString(undefined, { weekday: "long" })} · next ${day}` : day} · ${b.start}–${b.end}`;
 }
 const sameBucket = (a, b) => a && b && a.toLowerCase() === b.toLowerCase();
-function bucketNames() {
+const hasTag = (t, name) => (t.tags || []).some(x => sameBucket(x, name));
+// Every tag in use: bucket block names first, then task tags.
+function tagNames() {
   const names = new Map();
   state.blocks.filter(b => b.kind === "bucket" && b.name).forEach(b => names.set(b.name.toLowerCase(), b.name));
-  state.tasks.filter(t => t.bucket).forEach(t => { if (!names.has(t.bucket.toLowerCase())) names.set(t.bucket.toLowerCase(), t.bucket); });
+  state.tasks.forEach(t => (t.tags || []).forEach(x => { if (!names.has(x.toLowerCase())) names.set(x.toLowerCase(), x); }));
   return [...names.values()];
+}
+const tagBadges = (t) => (t.tags || []).map(x => el("span", { class: "badge bucket-tag", text: `#${x}` }));
+
+/* ─── LINKS: "must finish first" ────────────────────────────── */
+const taskById = (id) => state.tasks.find(t => t.id === id);
+const waitingOn = (t) => (t.after || []).map(taskById).filter(p => p && !p.done);
+const isBlocked = (t) => waitingOn(t).length > 0;
+function blockedBadge(t) {
+  const w = waitingOn(t);
+  return w.length ? el("span", { class: "badge lock", title: `Finish first: ${w.map(p => p.text).join(", ")}`, text: `🔒 after ${w[0].text}${w.length > 1 ? ` +${w.length - 1}` : ""}` }) : null;
+}
+// Would "b waits for a" make a loop? (a already waits for b, directly or not.)
+function dependsOn(a, b, seen = new Set()) {
+  if (a.id === b.id) return true;
+  if (seen.has(a.id)) return false;
+  seen.add(a.id);
+  return (a.after || []).some(id => { const p = taskById(id); return p && dependsOn(p, b, seen); });
+}
+// "first" must be finished before "then".
+function addLink(first, then) {
+  if (!first || !then || first.id === then.id) return false;
+  if ((then.after || []).includes(first.id)) { toast("Those are already linked"); return false; }
+  if (dependsOn(first, then)) { toast(`That would make a loop: “${first.text}” already waits for “${then.text}”.`, "error"); return false; }
+  then.after = [...(then.after || []), first.id];
+  saveState();
+  toast(`“${then.text}” now waits for “${first.text}”.`);
+  return true;
+}
+function removeLink(first, then) {
+  then.after = (then.after || []).filter(id => id !== first.id);
+  saveState();
+}
+function deleteTask(t) {
+  state.tasks = state.tasks.filter(x => x.id !== t.id);
+  state.tasks.forEach(x => { if (x.after?.includes(t.id)) x.after = x.after.filter(id => id !== t.id); });
 }
 // Tasks that sit inside one occurrence of a block.
 function tasksIn(range) {
@@ -1241,7 +1333,7 @@ function fillBucket(b) {
   taken.sort((p, q) => p[0] - q[0]);
   const step = 15 * 60000;
   const startFrom = new Date(Math.max(range[0], Math.ceil(now / step) * step));
-  const todo = schedulableTasks().filter(t => !t.done && !t.scheduledTime && sameBucket(t.bucket, b.name));
+  const todo = schedulableTasks().filter(t => !t.done && !t.scheduledTime && hasTag(t, b.name));
   if (!todo.length) { toast(`No unplanned ${b.name} tasks. Tag a task with #${b.name.toLowerCase().replace(/\s+/g, "")} first.`, "error"); return; }
   let placed = 0;
   for (const t of todo) {
@@ -1367,15 +1459,15 @@ function tipBlock(text) {
 /* ─── SHARED: ADD-TASK INPUT ────────────────────────────────── */
 function addTask(text, quadrant = null) {
   let clean = String(text || "").trim();
-  // "#friends" puts the task in a bucket (matches an existing bucket name if there is one).
-  let bucket = "";
-  clean = clean.replace(/(^|\s)#([\p{L}\p{N}_-]+)/u, (m, sp, tag) => {
-    bucket = bucketNames().find(n => n.toLowerCase().replace(/\s+/g, "") === tag.toLowerCase())
-          || tag.charAt(0).toUpperCase() + tag.slice(1);
+  // Every "#tag" becomes a tag (it matches an existing tag name if there is one).
+  const tags = [];
+  clean = clean.replace(/(^|\s)#([\p{L}\p{N}_-]+)/gu, (m, sp, tag) => {
+    tags.push(tagNames().find(n => n.toLowerCase().replace(/\s+/g, "") === tag.toLowerCase())
+          || tag.charAt(0).toUpperCase() + tag.slice(1));
     return " ";
   }).replace(/\s+/g, " ").trim();
   if (!clean) return null;
-  const task = normalizeTask({ text: clean, quadrant, bucket });
+  const task = normalizeTask({ text: clean, quadrant, tags });
   state.tasks.push(task);
   return task;
 }
@@ -1585,7 +1677,7 @@ function taskRow(task, i) {
       "aria-label": "Task",
       oninput: (e) => { task.text = e.target.value; saveState(); },
     }),
-    task.bucket ? el("span", { class: "badge bucket-tag", text: task.bucket }) : null,
+    ...tagBadges(task),
     el("button", {
       class: `icon-btn ${isQuick ? "on" : ""}`,
       type: "button",
@@ -1626,7 +1718,7 @@ function renderListPhase(p) {
     _addCategory === "quick" ? "A small thing (under 3 minutes)..." : "Write a task and press Enter...",
     (text) => addTask(text, _addCategory === "quick" ? "quick" : null),
   ));
-  wrap.appendChild(el("div", { class: "hint", style: { marginTop: "-8px" }, text: "Tip: add a tag like #friends to put a task in a bucket." }));
+  wrap.appendChild(el("div", { class: "hint", style: { marginTop: "-8px" }, text: "Tip: add tags like #friends #errand. Tags group your to-dos and fill bucket time." }));
 
   const regular = state.tasks.filter(t => t.quadrant !== "quick");
   const quick = state.tasks.filter(t => t.quadrant === "quick");
@@ -1859,7 +1951,7 @@ function renderSchedule(p) {
           oninput: (e) => { task.scheduledTime = e.target.value; refresh(); },
         }),
         durSel,
-        bucketSelect(task),
+        tagsInput(task),
         gcal,
       ]),
       clashNote(task),
@@ -1877,15 +1969,20 @@ function renderSchedule(p) {
   return wrap;
 }
 
-function bucketSelect(task) {
-  const names = bucketNames();
-  if (!names.length) return null;
-  const sel = el("select", {
-    "aria-label": "Bucket",
-    onchange: (e) => { task.bucket = e.target.value; saveState(); },
-  }, [el("option", { value: "", text: "No bucket" }), ...names.map(n => el("option", { value: n, text: n }))]);
-  sel.value = names.find(n => sameBucket(n, task.bucket)) || "";
-  return sel;
+// Tags as text: "friends, errand" or "#friends #errand".
+function tagsInput(task, onDone) {
+  return el("input", {
+    type: "text", class: "tags-input", list: "bucketNames",
+    "aria-label": "Tags", placeholder: "Tags: friends, errand",
+    value: (task.tags || []).join(", "),
+    onchange: (e) => {
+      const known = tagNames();
+      task.tags = [...new Set(e.target.value.split(/[,#\s]+/).map(x => x.trim()).filter(Boolean)
+        .map(x => known.find(n => n.toLowerCase().replace(/\s+/g, "") === x.toLowerCase()) || x))];
+      saveState();
+      onDone?.();
+    },
+  });
 }
 
 function clashNote(task) {
@@ -1908,7 +2005,7 @@ function blocksSection() {
     let meter = null;
     if (isBucket && range) {
       const cap = (range[1] - range[0]) / 60000;
-      const used = tasksIn(range).filter(t => sameBucket(t.bucket, b.name)).reduce((n, t) => n + (t.duration || 30), 0);
+      const used = tasksIn(range).filter(t => hasTag(t, b.name)).reduce((n, t) => n + (t.duration || 30), 0);
       meter = el("div", { class: "fill-meter" }, [
         el("div", { class: "fill-track" }, [el("div", { style: { width: `${Math.min(100, used / cap * 100)}%` } })]),
         el("span", { text: `${minutesText(used)} of ${minutesText(cap)} planned` }),
@@ -1955,7 +2052,7 @@ function blocksSection() {
     nameIn, dateIn, startIn, el("span", { class: "hint", style: { margin: 0 }, text: "to" }), endIn,
     el("label", { class: "check-line" }, [weeklyIn, "Every week"]),
     el("button", { class: "btn btn-sm btn-dark", type: "button", text: "Add", onclick: add }),
-    el("datalist", { id: "bucketNames" }, bucketNames().map(n => el("option", { value: n }))),
+    el("datalist", { id: "bucketNames" }, tagNames().map(n => el("option", { value: n }))),
   ]));
   return sec;
 }
@@ -2051,12 +2148,17 @@ function moveInOrder(id, toIndex) {
 }
 
 function completeTask(task, fromEl) {
+  const w = waitingOn(task);
+  if (w.length) { toast(`Finish “${w[0].text}” first. Then this one opens up.`, "error"); return false; }
+  const waiting = state.tasks.filter(t => !t.done && t.after?.includes(task.id));
   task.done = true;
   celebrate(fromEl);
-  toast(PRAISE[Math.floor(Math.random() * PRAISE.length)]);
+  const unlocked = waiting.filter(t => !isBlocked(t));
+  toast(unlocked.length ? `Done! Unlocked: ${unlocked.map(t => t.text).join(", ")}` : PRAISE[Math.floor(Math.random() * PRAISE.length)]);
   if (_stepsOpenFor === task.id) _stepsOpenFor = null;
   resetTimer();
   saveState(); render();
+  return true;
 }
 
 function fmtTime(sec) {
@@ -2221,7 +2323,9 @@ function renderTriage(p) {
     const soft = timeBadge(task);
     if (soft) meta.appendChild(soft);
     else if (when) meta.appendChild(el("span", { class: "badge", text: when }));
-    if (task.bucket) meta.appendChild(el("span", { class: "badge bucket-tag", text: task.bucket }));
+    tagBadges(task).forEach(b => meta.appendChild(b));
+    const lock = blockedBadge(task);
+    if (lock) meta.appendChild(lock);
     if (task.steps?.length) meta.appendChild(el("span", { class: "badge", text: `${task.steps.filter(s => s.done).length}/${task.steps.length} steps` }));
 
     const doneBtn = el("button", {
@@ -2377,7 +2481,7 @@ function nowStrip() {
     return el("div", { class: "now-strip", style: { "--c": isBucket ? "var(--bucket)" : "var(--ink-faint)" } }, [
       el("strong", { text: isBucket ? `${name} time` : `${name} (blocked off)` }),
       el("span", {}, [el("span", { "data-left": String(cur.r[1].getTime()), text: minutesText((cur.r[1] - now) / 60000) }), " left"]),
-      isBucket ? el("span", { text: `· ${plural(tasksIn(cur.r).filter(t => sameBucket(t.bucket, cur.b.name)).length, "task")} planned` }) : null,
+      isBucket ? el("span", { text: `· ${plural(tasksIn(cur.r).filter(t => hasTag(t, cur.b.name)).length, "task")} planned` }) : null,
     ]);
   }
   if (next) {
@@ -2505,11 +2609,563 @@ function homeCompare(a, b) {
   return (_homeSort === "soonest" ? (urg || imp) : (imp || urg)) || state.tasks.indexOf(a) - state.tasks.indexOf(b);
 }
 
+/* ─── TO-DO JAR (Matter.js physics) ─────────────────────────── */
+// Every open to-do is a blob in a jar of "liquid". The liquid gets denser
+// toward the bottom (like real water layers), so each blob sinks until the
+// liquid around it is as dense as the blob. Heavier to-dos (less important,
+// less time-sensitive, longer) settle lower. Size shows time to complete.
+// "Must finish first" links are springs. A tag group pulls itself together
+// (matter-attractors).
+const HAS_PHYSICS = !!window.Matter;
+if (HAS_PHYSICS && window.MatterAttractors) Matter.use(MatterAttractors);
+const HOME_MODE_KEY = "sharp-axe-home-mode";
+let _homeMode = (() => { try { return localStorage.getItem(HOME_MODE_KEY); } catch { return null; } })()
+  || (reduceMotion() ? "list" : "bubbles");
+let _tool = "move";    // "move" (drag) or "link" (connect)
+let _groupTag = "";    // tag to cluster and highlight
+let _linkFrom = null;  // Link tool: first task tapped, waiting for the second
+
+const FLUID = 0.001;   // liquid density at the very top of the jar
+const IMPORTANCE_WEIGHT = { q1: 0, quick: 0.2, q2: 0.45, q4: 1 }; // not sorted: 0.6
+
+// 0 = light (floats up) … 1 = heavy (sinks).
+function weightParts(t, now = Date.now()) {
+  const imp = IMPORTANCE_WEIGHT[t.quadrant] ?? 0.6;
+  const until = dueMs(t) - now;
+  const urg = until === Infinity ? 1 : until <= 3600e3 ? 0 : until <= 86400e3 ? 0.3 : until <= 7 * 86400e3 ? 0.6 : 1;
+  const mins = Math.min(240, Math.max(15, t.duration || 30));
+  const len = Math.log(mins / 15) / Math.log(16);
+  return { imp, urg, len, w: 0.45 * imp + 0.35 * urg + 0.2 * len };
+}
+const blobDensity = (w) => FLUID * (0.6 + w);
+const fluidAt = (y) => FLUID * (0.6 + Math.max(0, Math.min(1, y / (jar.h || 1))));
+
+function weightReasons(t) {
+  const { w } = weightParts(t);
+  const q = qInfo(t.quadrant);
+  const soft = softTime(t);
+  return [
+    w < 0.35 ? "Floats up" : w < 0.65 ? "Floats in the middle" : "Sinks",
+    q ? q.label : "Not sorted",
+    soft ? soft.txt : (t.date ? whenText(t) : "No date"),
+    durLabel(t.duration || 30),
+  ].join(" · ");
+}
+
+const jar = {
+  engine: null, wrap: null, canvas: null, ctx: null, tip: null, menu: null,
+  w: 0, h: 0, dpr: 1, scale: 1,
+  bodies: new Map(),   // task id → body
+  links: new Map(),    // "firstId>thenId" → spring
+  walls: [], drag: null, down: null, linkLine: null, pops: [],
+  raf: 0, placed: false, colors: {},
+};
+
+function ensureJar() {
+  if (jar.engine || !HAS_PHYSICS) return;
+  const { Engine, Events, Body } = Matter;
+  jar.engine = Engine.create({ gravity: { x: 0, y: 1, scale: 0.001 } });
+  // Buoyancy: push each blob up by the weight of the liquid it moves aside.
+  Events.on(jar.engine, "beforeUpdate", () => {
+    const g = jar.engine.gravity;
+    for (const b of jar.bodies.values()) {
+      Body.applyForce(b, b.position, { x: 0, y: -fluidAt(b.position.y) * b.area * g.y * g.scale });
+    }
+  });
+
+  jar.canvas = el("canvas", { role: "img", "aria-label": "Your to-dos as floating blobs. Lighter ones float to the top. Switch to List for a plain list." });
+  jar.tip = el("div", { class: "jar-tip" });
+  jar.menu = el("div", { class: "jar-menu", role: "menu" });
+  jar.wrap = el("div", { class: "jar" }, [jar.canvas, jar.tip, jar.menu]);
+  jar.ctx = jar.canvas.getContext("2d");
+
+  new ResizeObserver(() => jarResize()).observe(jar.wrap);
+  window.matchMedia?.("(prefers-color-scheme: dark)").addEventListener?.("change", readJarColors);
+
+  const c = jar.canvas;
+  c.addEventListener("pointerdown", jarPointerDown);
+  c.addEventListener("pointermove", jarPointerMove);
+  c.addEventListener("pointerup", jarPointerUp);
+  c.addEventListener("pointercancel", jarPointerUp);
+  c.addEventListener("pointerleave", () => { if (!jar.down) jar.tip.style.opacity = "0"; });
+  c.addEventListener("contextmenu", (e) => {
+    e.preventDefault();
+    const b = bodyAt(jarPoint(e));
+    if (b) openJarMenu(b, jarPoint(e));
+  });
+  // On touch screens, only stop the page from scrolling when a blob is touched.
+  c.addEventListener("touchstart", (e) => {
+    const r = c.getBoundingClientRect(), t = e.touches[0];
+    if (bodyAt({ x: t.clientX - r.left, y: t.clientY - r.top })) e.preventDefault();
+  }, { passive: false });
+}
+
+function jarResize() {
+  const r = jar.wrap.getBoundingClientRect();
+  if (!r.width || !r.height) return;
+  const { Bodies, Composite, Body } = Matter;
+  jar.w = r.width; jar.h = r.height;
+  jar.dpr = window.devicePixelRatio || 1;
+  jar.canvas.width = Math.round(jar.w * jar.dpr);
+  jar.canvas.height = Math.round(jar.h * jar.dpr);
+  jar.scale = Math.max(0.62, Math.min(1, jar.w / 700));
+  Composite.remove(jar.engine.world, jar.walls);
+  const T = 80, opts = { isStatic: true, friction: 0.1 };
+  jar.walls = [
+    Bodies.rectangle(jar.w / 2, jar.h + T / 2, jar.w + 2 * T, T, opts),
+    Bodies.rectangle(jar.w / 2, -T / 2, jar.w + 2 * T, T, opts),
+    Bodies.rectangle(-T / 2, jar.h / 2, T, jar.h + 2 * T, opts),
+    Bodies.rectangle(jar.w + T / 2, jar.h / 2, T, jar.h + 2 * T, opts),
+  ];
+  Composite.add(jar.engine.world, jar.walls);
+  for (const b of jar.bodies.values()) {
+    const rad = b.circleRadius;
+    Body.setPosition(b, {
+      x: Math.max(rad, Math.min(jar.w - rad, b.position.x)),
+      y: Math.max(rad, Math.min(jar.h - rad, b.position.y)),
+    });
+  }
+  readJarColors();
+  syncJar();
+}
+
+function readJarColors() {
+  const cs = getComputedStyle(document.documentElement);
+  const v = (n) => cs.getPropertyValue(n).trim();
+  jar.colors = {
+    ink: v("--ink"), mid: v("--ink-mid"), muted: v("--ink-muted"), faint: v("--ink-faint"),
+    line: v("--line"), surface: v("--surface"), surface2: v("--surface-2"), bg: v("--bg"),
+    q1: v("--q1"), q2: v("--q2"), quick: v("--quick"), q4: v("--q4"),
+    steel: v("--steel"), amber: v("--amber"), accent: v("--accent"), bucket: v("--bucket"),
+    head: v("--head"), sans: v("--sans"),
+  };
+}
+function rgba(hex, a) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex || "");
+  if (!m) return `rgba(128,128,128,${a})`;
+  const n = parseInt(m[1], 16);
+  return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`;
+}
+
+// Size: 26 px (15 min) to 64 px (4 hrs), big enough for the words,
+// and smaller when the jar is crowded.
+function blobRadius(t, crowd = 1) {
+  const { len } = weightParts(t);
+  jar.ctx.font = `600 13px ${jar.colors.sans || "sans-serif"}`;
+  const textW = jar.ctx.measureText(t.text).width;
+  const byLen = 26 + 38 * len;
+  const byText = Math.min(58, 16 + Math.sqrt(textW) * 2.1);
+  return Math.max(byLen, byText) * jar.scale * crowd;
+}
+
+// Make the physics world match the to-do list: add, update, remove blobs and links.
+function syncJar() {
+  if (!jar.engine || !jar.w) return;
+  const { Bodies, Body, Composite, Constraint } = Matter;
+  const world = jar.engine.world;
+  const tasks = state.tasks.filter(t => !t.done);
+  const ids = new Set(tasks.map(t => t.id));
+
+  for (const [id, b] of jar.bodies) {
+    if (ids.has(id)) continue;
+    const t = taskById(id);
+    if (t?.done) jar.pops.push({ x: b.position.x, y: b.position.y, r: b.circleRadius, t0: performance.now(), c: blobColor(t) });
+    Composite.remove(world, b);
+    jar.bodies.delete(id);
+  }
+
+  // Shrink everything a little when the blobs would fill more than half the jar.
+  const want = tasks.map(t => blobRadius(t));
+  const area = want.reduce((n, r) => n + Math.PI * r * r, 0);
+  const crowd = Math.min(1, Math.sqrt((0.5 * jar.w * jar.h) / (area || 1)));
+
+  tasks.forEach((t, i) => {
+    const r = Math.max(14, want[i] * crowd);
+    const { w } = weightParts(t);
+    let b = jar.bodies.get(t.id);
+    if (b && Math.abs(b.circleRadius - r) > 1.5) {
+      // Size changed: swap in a new circle at the same place and speed.
+      const nb = makeBlob(b.position.x, b.position.y, r, w);
+      Body.setVelocity(nb, b.velocity);
+      Composite.remove(world, b);
+      b = nb;
+      jar.bodies.set(t.id, b);
+      Composite.add(world, b);
+    } else if (!b) {
+      const x = r + Math.random() * Math.max(1, jar.w - 2 * r);
+      // First time: start near where it will settle. New to-dos drop in from the top.
+      const y = jar.placed ? r + 2 : Math.max(r, Math.min(jar.h - r, w * jar.h));
+      b = makeBlob(x, y, r, w);
+      jar.bodies.set(t.id, b);
+      Composite.add(world, b);
+    } else if (Math.abs(b.density - blobDensity(w)) > 1e-7) {
+      Body.setDensity(b, blobDensity(w));
+    }
+    b.plugin.task = t;
+  });
+  jar.placed = true;
+
+  // Springs for "must finish first" links between open to-dos.
+  const wanted = new Map();
+  tasks.forEach(t => waitingOn(t).forEach(p => {
+    const a = jar.bodies.get(p.id), b = jar.bodies.get(t.id);
+    if (a && b) wanted.set(`${p.id}>${t.id}`, [a, b]);
+  }));
+  for (const [key, c] of jar.links) {
+    const pair = wanted.get(key);
+    if (!pair || c.bodyA !== pair[0] || c.bodyB !== pair[1]) { Composite.remove(world, c); jar.links.delete(key); }
+  }
+  for (const [key, [a, b]] of wanted) {
+    if (jar.links.has(key)) continue;
+    const c = Constraint.create({ bodyA: a, bodyB: b, length: a.circleRadius + b.circleRadius + 70, stiffness: 0.0015, damping: 0.02 });
+    jar.links.set(key, c);
+    Composite.add(world, c);
+  }
+}
+
+function makeBlob(x, y, r, w) {
+  const b = Matter.Bodies.circle(x, y, r, {
+    density: blobDensity(w), frictionAir: 0.08, friction: 0.05, restitution: 0.1,
+  });
+  b.plugin.attractors = [groupAttractor];
+  b.plugin.seed = Math.random() * 10;
+  return b;
+}
+
+// matter-attractors: blobs that share the picked tag pull toward each other,
+// mostly sideways, so they cluster without undoing the float order.
+function groupAttractor(a, b) {
+  if (!_groupTag) return;
+  const ta = a.plugin.task, tb = b.plugin.task;
+  if (!ta || !tb || !hasTag(ta, _groupTag) || !hasTag(tb, _groupTag)) return;
+  const k = 1.2e-6 * Math.min(a.mass, b.mass);
+  const f = { x: (a.position.x - b.position.x) * k, y: (a.position.y - b.position.y) * k * 0.2 };
+  Matter.Body.applyForce(a, a.position, { x: -f.x, y: -f.y });
+  return f;
+}
+
+/* ---- pointer: drag, tap, long-press, link ---- */
+function jarPoint(e) {
+  const r = jar.canvas.getBoundingClientRect();
+  return { x: e.clientX - r.left, y: e.clientY - r.top };
+}
+function bodyAt(p) {
+  for (const b of jar.bodies.values()) {
+    if (Math.hypot(b.position.x - p.x, b.position.y - p.y) <= b.circleRadius) return b;
+  }
+  return null;
+}
+
+function jarPointerDown(e) {
+  if (e.button === 2) return;
+  closeJarMenu();
+  const p = jarPoint(e), b = bodyAt(p);
+  jar.down = { p, b, t0: performance.now(), moved: false, id: e.pointerId };
+  if (!b) return;
+  jar.canvas.setPointerCapture?.(e.pointerId);
+  jar.tip.style.opacity = "0";
+  if (_tool === "link") {
+    jar.linkLine = { from: b, p };
+  } else {
+    jar.drag = Matter.Constraint.create({
+      pointA: { ...p }, bodyB: b,
+      pointB: { x: p.x - b.position.x, y: p.y - b.position.y },
+      stiffness: 0.08, damping: 0.1, length: 0,
+    });
+    Matter.Composite.add(jar.engine.world, jar.drag);
+  }
+  jar.down.press = setTimeout(() => {
+    if (jar.down && !jar.down.moved) { endDrag(); jar.linkLine = null; openJarMenu(b, p); jar.down = null; }
+  }, 550);
+}
+
+function jarPointerMove(e) {
+  const p = jarPoint(e);
+  if (jar.down) {
+    if (Math.hypot(p.x - jar.down.p.x, p.y - jar.down.p.y) > 6) { jar.down.moved = true; clearTimeout(jar.down.press); }
+    if (jar.drag) jar.drag.pointA = p;
+    if (jar.linkLine) jar.linkLine.p = p;
+    return;
+  }
+  const b = bodyAt(p);
+  jar.canvas.style.cursor = b ? (_tool === "link" ? "crosshair" : "grab") : "default";
+  if (b && e.pointerType === "mouse") {
+    const t = b.plugin.task, w = waitingOn(t);
+    jar.tip.replaceChildren(
+      el("strong", { text: t.text }),
+      el("div", { text: weightReasons(t) }),
+      (t.tags || []).length ? el("div", { text: t.tags.map(x => `#${x}`).join(" ") }) : null,
+      w.length ? el("div", { text: `🔒 Finish first: ${w.map(x => x.text).join(", ")}` }) : null,
+    );
+    jar.tip.style.left = `${Math.min(p.x + 14, jar.w - 230)}px`;
+    jar.tip.style.top = `${Math.min(p.y + 14, jar.h - 80)}px`;
+    jar.tip.style.opacity = "1";
+  } else {
+    jar.tip.style.opacity = "0";
+  }
+}
+
+function endDrag() {
+  if (jar.drag) { Matter.Composite.remove(jar.engine.world, jar.drag); jar.drag = null; }
+}
+
+function jarPointerUp(e) {
+  const d = jar.down;
+  jar.down = null;
+  endDrag();
+  if (!d) return;
+  clearTimeout(d.press);
+  const p = jarPoint(e);
+  const target = bodyAt(p);
+  const line = jar.linkLine;
+  jar.linkLine = null;
+  if (e.type === "pointercancel") return;
+
+  if (_tool === "link") {
+    // Drag from one blob to another, or tap one and then the other.
+    if (line && target && target !== line.from) {
+      if (addLink(line.from.plugin.task, target.plugin.task)) { _linkFrom = null; syncJar(); render(); }
+      return;
+    }
+    if (!d.moved && target) {
+      const t = target.plugin.task;
+      if (_linkFrom && _linkFrom !== t.id) {
+        if (addLink(taskById(_linkFrom), t)) syncJar();
+        _linkFrom = null;
+      } else {
+        _linkFrom = _linkFrom === t.id ? null : t.id;
+        if (_linkFrom) toast(`Now tap the to-do that waits for “${t.text}”.`);
+      }
+      render();
+    } else if (!d.moved && !target && _linkFrom) {
+      _linkFrom = null; render();
+    }
+    return;
+  }
+
+  if (d.moved || performance.now() - d.t0 > 500) return;
+  // A tap opens the editor under the jar. Tapping empty space closes it.
+  const id = target ? target.plugin.task.id : null;
+  if (_openFor === id) return;
+  _openFor = id;
+  _stepsOpenFor = id;
+  render();
+  if (id) setTimeout(() => $(".jar-editor")?.scrollIntoView({ behavior: reduceMotion() ? "auto" : "smooth", block: "nearest" }), 0);
+}
+
+function openJarMenu(b, p) {
+  const t = b.plugin.task;
+  const item = (label, fn, cls = "") => el("button", { type: "button", role: "menuitem", class: cls, text: label, onclick: () => { closeJarMenu(); fn(); } });
+  jar.menu.replaceChildren(
+    item(isBlocked(t) ? "🔒 Done" : "✓ Done", () => completeTask(t, null)),
+    item("Edit", () => { _openFor = t.id; _stepsOpenFor = t.id; render(); setTimeout(() => $(".jar-editor")?.scrollIntoView({ block: "nearest" }), 0); }),
+    item("Link from here", () => { _tool = "link"; _linkFrom = t.id; render(); toast(`Now tap the to-do that waits for “${t.text}”.`); }),
+    item("Delete", () => { deleteTask(t); if (_openFor === t.id) _openFor = null; saveState(); render(); }, "danger"),
+  );
+  jar.menu.style.left = `${Math.min(p.x, jar.w - 170)}px`;
+  jar.menu.style.top = `${Math.min(p.y, jar.h - 170)}px`;
+  jar.menu.classList.add("open");
+  jar.menu.querySelector("button")?.focus();
+}
+function closeJarMenu() { jar.menu?.classList.remove("open"); }
+
+/* ---- drawing ---- */
+function blobColor(t) {
+  const c = jar.colors;
+  return { q1: c.q1, q2: c.q2, quick: c.quick, q4: c.q4 }[t?.quadrant] || c.muted;
+}
+
+function wrapLines(ctx, text, maxW, maxLines) {
+  const words = text.split(/\s+/);
+  const lines = [];
+  let cur = "";
+  for (const w of words) {
+    const test = cur ? `${cur} ${w}` : w;
+    if (ctx.measureText(test).width <= maxW || !cur) cur = test;
+    else { lines.push(cur); cur = w; }
+  }
+  if (cur) lines.push(cur);
+  if (lines.length > maxLines) {
+    lines.length = maxLines;
+    let last = lines[maxLines - 1];
+    while (last.length > 1 && ctx.measureText(last + "…").width > maxW) last = last.slice(0, -1);
+    lines[maxLines - 1] = last + "…";
+  }
+  return lines;
+}
+
+// A soft, slightly wobbly outline. It wobbles more while the blob moves.
+function blobPath(ctx, b, ts) {
+  const r = b.circleRadius, { x, y } = b.position, s = b.plugin.seed;
+  const speed = Math.min(1, Math.hypot(b.velocity.x, b.velocity.y) / 3);
+  const amp = reduceMotion() ? 0 : 0.025 + 0.05 * speed;
+  const N = 28, pts = [];
+  for (let i = 0; i < N; i++) {
+    const a = (i / N) * Math.PI * 2;
+    const k = 1 + amp * Math.sin(3 * a + ts / 650 + s) + amp * 0.5 * Math.sin(5 * a - ts / 900 + 2 * s);
+    pts.push([x + Math.cos(a) * r * k, y + Math.sin(a) * r * k]);
+  }
+  ctx.beginPath();
+  const mid = (p, q) => [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2];
+  let m = mid(pts[N - 1], pts[0]);
+  ctx.moveTo(m[0], m[1]);
+  for (let i = 0; i < N; i++) {
+    const p = pts[i], q = mid(p, pts[(i + 1) % N]);
+    ctx.quadraticCurveTo(p[0], p[1], q[0], q[1]);
+  }
+  ctx.closePath();
+}
+
+function arrow(ctx, a, b, color, dashed) {
+  const dx = b.position.x - a.position.x, dy = b.position.y - a.position.y;
+  const d = Math.hypot(dx, dy) || 1, nx = dx / d, ny = dy / d;
+  const sx = a.position.x + nx * a.circleRadius, sy = a.position.y + ny * a.circleRadius;
+  const ex = b.position.x - nx * (b.circleRadius + 3), ey = b.position.y - ny * (b.circleRadius + 3);
+  ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 2;
+  ctx.setLineDash(dashed ? [6, 5] : []);
+  ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();
+  ctx.setLineDash([]);
+  const ang = Math.atan2(dy, dx), L = 9;
+  ctx.beginPath();
+  ctx.moveTo(ex, ey);
+  ctx.lineTo(ex - L * Math.cos(ang - 0.45), ey - L * Math.sin(ang - 0.45));
+  ctx.lineTo(ex - L * Math.cos(ang + 0.45), ey - L * Math.sin(ang + 0.45));
+  ctx.closePath(); ctx.fill();
+}
+
+function drawJar(ts) {
+  const ctx = jar.ctx, c = jar.colors, W = jar.w, H = jar.h;
+  ctx.setTransform(jar.dpr, 0, 0, jar.dpr, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+
+  // Liquid: clear at the top, deeper toward the bottom.
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, rgba(c.bucket, 0.02));
+  g.addColorStop(1, rgba(c.steel, 0.14));
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+  ctx.font = `700 11px ${c.sans}`;
+  ctx.fillStyle = c.muted;
+  ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+  ctx.fillText("↑ LIGHTER · DO SOONER", 12, 20);
+  ctx.fillText("↓ HEAVIER · LATER", 12, H - 12);
+
+  const bodies = [...jar.bodies.values()];
+
+  // Group outline around the picked tag.
+  if (_groupTag) {
+    const mem = bodies.filter(b => hasTag(b.plugin.task, _groupTag));
+    if (mem.length) {
+      const cx = mem.reduce((n, b) => n + b.position.x, 0) / mem.length;
+      const cy = mem.reduce((n, b) => n + b.position.y, 0) / mem.length;
+      const R = Math.max(...mem.map(b => Math.hypot(b.position.x - cx, b.position.y - cy) + b.circleRadius)) + 12;
+      ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2);
+      ctx.fillStyle = rgba(c.bucket, 0.07); ctx.fill();
+      ctx.setLineDash([7, 6]); ctx.strokeStyle = rgba(c.bucket, 0.7); ctx.lineWidth = 1.5; ctx.stroke(); ctx.setLineDash([]);
+      ctx.font = `800 13px ${c.head}`; ctx.fillStyle = c.bucket; ctx.textAlign = "center";
+      ctx.fillText(`#${_groupTag}`, cx, Math.max(16, cy - R - 6));
+    }
+  }
+
+  // Links: arrow from the to-do to finish first, to the one that waits.
+  for (const con of jar.links.values()) arrow(ctx, con.bodyA, con.bodyB, rgba(c.muted, 0.8), true);
+  if (jar.linkLine) {
+    const f = jar.linkLine.from;
+    ctx.strokeStyle = c.accent; ctx.lineWidth = 2.5; ctx.setLineDash([4, 4]);
+    ctx.beginPath(); ctx.moveTo(f.position.x, f.position.y); ctx.lineTo(jar.linkLine.p.x, jar.linkLine.p.y); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  const RING = { calm: c.steel, soon: c.amber, near: c.accent, past: c.muted };
+  for (const b of bodies) {
+    const t = b.plugin.task;
+    const col = blobColor(t);
+    const blocked = isBlocked(t);
+    const soft = softTime(t);
+    ctx.globalAlpha = _groupTag && !hasTag(t, _groupTag) ? 0.3 : blocked ? 0.62 : 1;
+    blobPath(ctx, b, ts);
+    ctx.fillStyle = c.surface; ctx.fill();
+    ctx.fillStyle = rgba(col, t.quadrant ? 0.2 : 0.1); ctx.fill();
+    ctx.strokeStyle = soft ? RING[soft.cls] : rgba(col, 0.75);
+    ctx.lineWidth = soft ? 3 : 2;
+    ctx.stroke();
+    if (_openFor === t.id || _linkFrom === t.id) {
+      ctx.beginPath(); ctx.arc(b.position.x, b.position.y, b.circleRadius + 6, 0, Math.PI * 2);
+      ctx.strokeStyle = c.accent; ctx.lineWidth = 2.5; ctx.stroke();
+    }
+
+    // Words inside the blob.
+    const r = b.circleRadius;
+    const fs = Math.max(10.5, Math.min(14, r / 3.4));
+    ctx.font = `600 ${fs}px ${c.sans}`;
+    ctx.fillStyle = c.ink; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    const lines = wrapLines(ctx, t.text, r * 1.55, r > 34 ? 3 : 2);
+    const sub = soft && r > 30 ? soft.txt.replace(/^Starts /, "").replace(/ · .*/, "") : "";
+    const lh = fs * 1.2;
+    let y = b.position.y - ((lines.length - 1) * lh + (sub ? lh : 0)) / 2;
+    if (blocked) { ctx.font = `${fs}px ${c.sans}`; ctx.fillText("🔒", b.position.x, y - lh); ctx.font = `600 ${fs}px ${c.sans}`; }
+    for (const line of lines) { ctx.fillText(line, b.position.x, y); y += lh; }
+    if (sub) { ctx.font = `600 ${fs - 2}px ${c.sans}`; ctx.fillStyle = RING[soft.cls]; ctx.fillText(sub, b.position.x, y); }
+    ctx.globalAlpha = 1;
+  }
+
+  // Finished to-dos pop.
+  jar.pops = jar.pops.filter(p => ts - p.t0 < 500);
+  for (const p of jar.pops) {
+    const k = (ts - p.t0) / 500;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r * (1 + k * 0.8), 0, Math.PI * 2);
+    ctx.strokeStyle = rgba(p.c, 1 - k); ctx.lineWidth = 3 * (1 - k) + 1; ctx.stroke();
+  }
+
+  if (!bodies.length) {
+    ctx.font = `600 15px ${c.sans}`; ctx.fillStyle = c.muted; ctx.textAlign = "center";
+    ctx.fillText(state.tasks.length ? "Nothing open. Enjoy it." : "Add your first to-do above. It will drop in here.", W / 2, H / 2);
+  }
+}
+
+function jarLoop(ts) {
+  if (!jar.wrap?.isConnected) { jar.raf = 0; return; } // paused while you are in the steps
+  jar.raf = requestAnimationFrame(jarLoop);
+  if (document.hidden || !jar.w) return;
+  Matter.Engine.update(jar.engine, 1000 / 60);
+  drawJar(ts);
+}
+function startJar() {
+  if (!jar.raf) jar.raf = requestAnimationFrame(jarLoop);
+}
+// Time sensitivity changes as the clock moves, so weights are refreshed now and then.
+setInterval(() => { if (jar.wrap?.isConnected) syncJar(); }, 30000);
+
+/* ---- home editor, list rows, and the page ---- */
+// "Must finish first": chips you can remove, plus a menu to add one.
+function linksEditor(t) {
+  const firsts = (t.after || []).map(taskById).filter(Boolean);
+  const options = state.tasks.filter(x => !x.done && x.id !== t.id && !(t.after || []).includes(x.id) && !dependsOn(x, t));
+  const add = el("select", {
+    "aria-label": "Add a to-do that must be finished first",
+    onchange: (e) => { const p = taskById(Number(e.target.value)); if (p && addLink(p, t)) render(); },
+  }, [el("option", { value: "", text: options.length ? "+ Add one…" : "No other open to-dos" }),
+      ...options.map(x => el("option", { value: String(x.id), text: x.text }))]);
+  return el("div", {}, [
+    el("span", { class: "section-label", text: "Must finish first" }),
+    el("div", { class: "controls" }, [
+      ...firsts.map(p => el("span", { class: `badge ${p.done ? "" : "lock"}` }, [
+        `${p.done ? "✓" : "🔒"} ${p.text} `,
+        el("button", { class: "badge-x", type: "button", "aria-label": `Remove link to ${p.text}`, html: SVG.x,
+          onclick: () => { removeLink(p, t); render(); } }),
+      ])),
+      add,
+    ]),
+  ]);
+}
+
 function homeEditor(t) {
   const textIn = el("input", { type: "text", value: t.text, "aria-label": "Task", oninput: (e) => { t.text = e.target.value; saveState(); } });
-  const durSel = el("select", { "aria-label": "How long", onchange: (e) => { t.duration = Number(e.target.value); saveState(); } },
+  textIn.addEventListener("change", () => syncJar());
+  const durSel = el("select", { "aria-label": "How long", onchange: (e) => { t.duration = Number(e.target.value); saveState(); render(); } },
     DURATIONS.map(m => el("option", { value: String(m), text: durLabel(m) })));
   durSel.value = String(t.duration || 30);
+  const blocked = waitingOn(t);
   return el("div", { class: "home-editor" }, [
     textIn,
     el("div", {}, [
@@ -2523,20 +3179,31 @@ function homeEditor(t) {
       ]),
     ]),
     el("div", {}, [
-      el("span", { class: "section-label", text: "When?" }),
+      el("span", { class: "section-label", text: "When and how long?" }),
       el("div", { class: "controls" }, [
         el("input", { type: "date", "aria-label": "Date", value: t.date || "", onchange: (e) => { t.date = e.target.value; saveState(); render(); } }),
         el("input", { type: "time", "aria-label": "Start time", value: t.scheduledTime || "", onchange: (e) => { t.scheduledTime = e.target.value; saveState(); render(); } }),
         durSel,
-        bucketSelect(t),
       ]),
       clashNote(t),
     ]),
+    el("div", {}, [
+      el("span", { class: "section-label", text: "Tags" }),
+      el("div", { class: "controls" }, [tagsInput(t, render)]),
+      el("datalist", { id: "bucketNames" }, tagNames().map(n => el("option", { value: n }))),
+    ]),
+    linksEditor(t),
     stepsBlock(t),
     el("div", { class: "controls" }, [
+      el("button", {
+        class: `btn btn-sm ${blocked.length ? "" : "btn-good"}`, type: "button",
+        html: `${blocked.length ? "🔒" : SVG.check}<span>Done</span>`,
+        title: blocked.length ? `Finish “${blocked[0].text}” first` : "Mark done",
+        onclick: (e) => { if (completeTask(t, e.currentTarget)) _openFor = null; render(); },
+      }),
       el("button", { class: "btn btn-sm btn-dark", type: "button", text: "Close", onclick: () => { _openFor = null; render(); } }),
       el("button", { class: "btn btn-sm btn-ghost", type: "button", html: `${SVG.trash}<span>Delete</span>`, onclick: () => {
-        state.tasks = state.tasks.filter(x => x.id !== t.id); _openFor = null; saveState(); render();
+        deleteTask(t); _openFor = null; saveState(); render();
       } }),
     ]),
   ]);
@@ -2546,21 +3213,23 @@ function homeRow(t) {
   const open = _openFor === t.id;
   const q = qInfo(t.quadrant);
   const stepsLeft = (t.steps || []).filter(s => !s.done).length;
-  return el("div", { class: `home-row ${open ? "open" : ""}`, style: { "--c": q ? q.color : "var(--line)" } }, [
+  return el("div", { class: `home-row ${open ? "open" : ""} ${isBlocked(t) ? "blocked" : ""}`, style: { "--c": q ? q.color : "var(--line)" } }, [
     el("div", { class: "home-row-top" }, [
       el("span", {
-        class: "check-circle", role: "checkbox", "aria-checked": "false", tabindex: "0", title: "Mark done",
+        class: "check-circle", role: "checkbox", "aria-checked": "false", tabindex: "0",
+        title: isBlocked(t) ? "Finish the linked to-do first" : "Mark done",
         onclick: (e) => completeTask(t, e.currentTarget),
         onkeydown: (e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); completeTask(t, e.currentTarget); } },
       }),
       el("span", { class: "up-text", text: t.text }),
       timeBadge(t) || (t.date ? el("span", { class: "badge", text: whenText(t) }) : null),
-      t.bucket ? el("span", { class: "badge bucket-tag", text: t.bucket }) : null,
+      blockedBadge(t),
+      ...tagBadges(t),
       t.steps?.length ? el("span", { class: "badge", text: stepsLeft ? `${plural(stepsLeft, "step")} left` : "Steps done" }) : null,
       q ? badgeFor(t) : null,
       el("button", {
         class: "icon-btn", type: "button", html: SVG.edit,
-        title: "Edit: importance, time, tiny steps", "aria-label": "Edit", "aria-expanded": String(open),
+        title: "Edit: importance, time, tags, links, tiny steps", "aria-label": "Edit", "aria-expanded": String(open),
         onclick: () => { _openFor = open ? null : t.id; _stepsOpenFor = _openFor; render(); },
       }),
     ]),
@@ -2568,54 +3237,110 @@ function homeRow(t) {
   ]);
 }
 
+function setHomeMode(mode) {
+  if (mode === "bubbles" && !HAS_PHYSICS) { toast("The physics library did not load. Showing the list.", "error"); mode = "list"; }
+  _homeMode = mode;
+  try { localStorage.setItem(HOME_MODE_KEY, mode); } catch {}
+  render();
+}
+
 function renderHome() {
+  const bubbles = _homeMode === "bubbles" && HAS_PHYSICS;
   const wrap = el("div", {}, [
     el("div", { class: "phase-header" }, [
       el("h1", { class: "phase-title", text: "My to-dos" }),
-      el("p", { class: "phase-sub", text: "Add anything. The most important and most urgent things come first." }),
+      el("p", { class: "phase-sub", text: bubbles
+        ? "Light to-dos float up. Heavy ones sink: less important, less urgent, and longer. Bigger blob = takes longer."
+        : "The most important and most urgent things come first." }),
     ]),
   ]);
-  const input = taskInput("home-input", "Add a to-do... (add #friends to put it in a bucket)", (text) => addTask(text));
+  const input = taskInput("home-input", "Add a to-do… use #tags like #friends", (text) => addTask(text));
   input.classList.add("home-input");
   wrap.appendChild(input);
 
-  const open = state.tasks.filter(t => !t.done && t.quadrant !== "q4").sort(homeCompare);
+  const open = state.tasks.filter(t => !t.done).sort(homeCompare);
+  const tags = tagNames().filter(n => open.some(t => hasTag(t, n)));
+  if (_groupTag && !tags.some(n => sameBucket(n, _groupTag))) _groupTag = "";
+
   wrap.appendChild(el("div", { class: "home-bar" }, [
-    el("div", { class: "seg", role: "tablist", "aria-label": "Sort" }, [
+    el("div", { class: "seg", "aria-label": "View" }, [
+      el("button", { type: "button", class: bubbles ? "active" : "", text: "Bubbles", onclick: () => setHomeMode("bubbles") }),
+      el("button", { type: "button", class: bubbles ? "" : "active", text: "List", onclick: () => setHomeMode("list") }),
+    ]),
+    bubbles ? el("div", { class: "seg", "aria-label": "Tool" }, [
+      el("button", { type: "button", class: _tool === "move" ? "active" : "", text: "Move", title: "Drag blobs. Tap one to edit it.",
+        onclick: () => { _tool = "move"; _linkFrom = null; render(); } }),
+      el("button", { type: "button", class: _tool === "link" ? "active" : "", text: "Link", title: "Connect a to-do to one that must wait for it",
+        onclick: () => { _tool = "link"; render(); } }),
+    ]) : el("div", { class: "seg", "aria-label": "Sort" }, [
       el("button", { type: "button", class: _homeSort === "importance" ? "active" : "", text: "Most important", onclick: () => { _homeSort = "importance"; render(); } }),
       el("button", { type: "button", class: _homeSort === "soonest" ? "active" : "", text: "Soonest", onclick: () => { _homeSort = "soonest"; render(); } }),
     ]),
     el("span", { class: "hint", style: { margin: 0 }, text: plural(open.length, "to-do") }),
   ]));
 
+  if (tags.length) {
+    wrap.appendChild(el("div", { class: "tag-row" }, [
+      el("span", { class: "hint", style: { margin: 0 }, text: bubbles ? "Group:" : "Show:" }),
+      el("button", { type: "button", class: `tag-chip ${_groupTag ? "" : "active"}`, text: "All", onclick: () => { _groupTag = ""; render(); } }),
+      ...tags.map(n => el("button", {
+        type: "button", class: `tag-chip ${sameBucket(n, _groupTag) ? "active" : ""}`, text: `#${n}`,
+        onclick: () => { _groupTag = sameBucket(n, _groupTag) ? "" : n; render(); },
+      })),
+    ]));
+  }
+
+  if (bubbles && _tool === "link") {
+    wrap.appendChild(el("div", { class: "hint link-hint", text: _linkFrom
+      ? `Now tap the to-do that waits for “${taskById(_linkFrom)?.text}”. Tap empty space to cancel.`
+      : "Link: drag from the to-do to finish first onto the one that waits. Or tap one, then the other." }));
+  }
+
   const strip = nowStrip();
   if (strip) wrap.appendChild(strip);
 
-  if (!open.length) {
-    wrap.appendChild(el("div", { class: "empty", text: state.tasks.length ? "Nothing open. Enjoy it." : "Nothing here yet. Add your first to-do above." }));
+  if (bubbles) {
+    ensureJar();
+    wrap.appendChild(jar.wrap);
+    // Wait until the jar is on the page, then match it to the list and run.
+    setTimeout(() => { if (!jar.w) jarResize(); else syncJar(); startJar(); }, 0);
+    const t = _openFor && taskById(_openFor);
+    if (t && !t.done) {
+      wrap.appendChild(el("div", { class: "home-row open jar-editor", style: { "--c": qInfo(t.quadrant)?.color || "var(--line)" } }, [
+        el("div", { class: "home-row-top" }, [
+          el("span", { class: "up-text", style: { fontWeight: "700" }, text: t.text }),
+          el("span", { class: "badge", text: weightReasons(t) }),
+        ]),
+        homeEditor(t),
+      ]));
+    }
   } else {
-    const list = el("div", { class: "home-list" });
-    open.forEach(t => list.appendChild(homeRow(t)));
-    wrap.appendChild(list);
+    const shown = _groupTag ? open.filter(t => hasTag(t, _groupTag)) : open;
+    if (!shown.length) {
+      wrap.appendChild(el("div", { class: "empty", text: state.tasks.length ? "Nothing open. Enjoy it." : "Nothing here yet. Add your first to-do above." }));
+    } else {
+      const list = el("div", { class: "home-list" });
+      shown.forEach(t => list.appendChild(homeRow(t)));
+      wrap.appendChild(list);
+    }
   }
 
-  const doneOrGone = state.tasks.filter(t => t.done || t.quadrant === "q4");
-  if (doneOrGone.length) {
+  const doneTasks = state.tasks.filter(t => t.done);
+  if (doneTasks.length) {
     const sec = el("div", { class: "section" }, [
       el("button", { class: "btn btn-sm btn-ghost", type: "button",
-        text: `${_homeShowDone ? "Hide" : "Show"} done and let go (${doneOrGone.length})`,
+        text: `${_homeShowDone ? "Hide" : "Show"} done (${doneTasks.length})`,
         onclick: () => { _homeShowDone = !_homeShowDone; render(); } }),
     ]);
     if (_homeShowDone) {
       const dl = el("div", { class: "task-list", style: { marginTop: "8px" } });
-      doneOrGone.forEach(t => dl.appendChild(el("div", { class: "up-row done" }, [
+      doneTasks.forEach(t => dl.appendChild(el("div", { class: "up-row done" }, [
         el("span", {
-          class: "check-circle", role: "checkbox", "aria-checked": String(t.done), tabindex: "0",
-          title: t.done ? "Not done after all" : "Bring back", html: t.done ? SVG.check : "",
-          onclick: () => { if (t.done) t.done = false; else t.quadrant = null; saveState(); render(); },
+          class: "check-circle", role: "checkbox", "aria-checked": "true", tabindex: "0",
+          title: "Not done after all", html: SVG.check,
+          onclick: () => { t.done = false; saveState(); render(); },
         }),
         el("span", { class: "up-text", text: t.text }),
-        t.done ? null : el("span", { class: "badge", text: "Let go" }),
       ])));
       sec.appendChild(dl);
     }
@@ -2774,7 +3499,10 @@ function exportTodos() {
     version: 2,
     exportedAt: new Date().toISOString(),
     tasks: state.tasks.map(t => ({
+      id: t.id,
       text: t.text,
+      tags: t.tags || [],
+      after: t.after || [],
       quadrant: t.quadrant,
       done: !!t.done,
       scheduledTime: t.scheduledTime || "",
@@ -2811,9 +3539,17 @@ async function handleFileImport(e) {
       throw new Error("Unrecognized file format");
     }
     // "q3" (the old Delegate box) is no longer used: those tasks come in unsorted.
-    const cleaned = incoming
-      .filter(t => t && typeof t.text === "string" && t.text.trim())
-      .map(t => normalizeTask({ ...t, id: null }));
+    // New ids, so links ("must finish first") are moved over to the new ids.
+    const valid = incoming.filter(t => t && typeof t.text === "string" && t.text.trim());
+    const idMap = new Map();
+    const cleaned = valid.map(t => {
+      const n = normalizeTask({ ...t, id: null, after: [] });
+      if (t.id != null) idMap.set(t.id, n.id);
+      return n;
+    });
+    cleaned.forEach((n, i) => {
+      n.after = (Array.isArray(valid[i].after) ? valid[i].after : []).map(id => idMap.get(id)).filter(id => id != null && id !== n.id);
+    });
     if (cleaned.length === 0) throw new Error("No tasks found in file");
 
     let mode = "append";
@@ -2870,7 +3606,13 @@ function downloadFullSession() {
   if (state.tasks.length === 0) {
     lines.push("(none captured)");
   } else {
-    state.tasks.forEach((t, i) => lines.push(`${i + 1}. ${mark(t)}${t.text}`));
+    state.tasks.forEach((t, i) => {
+      const extra = [
+        ...(t.tags || []).map(x => `#${x}`),
+        ...waitingOn(t).map(p => `(after: ${p.text})`),
+      ].join(" ");
+      lines.push(`${i + 1}. ${mark(t)}${t.text}${extra ? `  ${extra}` : ""}`);
+    });
   }
   lines.push("");
 
@@ -3109,11 +3851,14 @@ menuBtn.addEventListener("click", (e) => {
 });
 document.addEventListener("click", (e) => {
   if (!menuDropdown.contains(e.target) && e.target !== menuBtn) closeMenu();
+  if (jar.menu && !jar.menu.contains(e.target) && e.target !== jar.canvas) closeJarMenu();
 });
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
     closeMenu();
+    closeJarMenu();
     if (_pickId) { _pickId = null; render(); }
+    if (_linkFrom) { _linkFrom = null; render(); }
   }
 });
 
