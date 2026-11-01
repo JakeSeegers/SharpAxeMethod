@@ -808,6 +808,19 @@
   .garden-link strong { font-family: var(--head); font-size: 17px; }
   .garden-link > span:nth-child(2) { flex: 1; }
   .garden-link-icon { font-size: 26px; }
+  .repeat-link { background: var(--steel-soft); border-color: color-mix(in srgb, var(--q2) 30%, transparent); margin-top: 10px; }
+  .repeat-link .garden-link-icon { color: var(--q2); font-weight: 800; width: 26px; text-align: center; }
+  .link-btn { border: none; background: none; padding: 0; cursor: pointer; color: var(--accent-ink); font-weight: 700; font-size: 13px; }
+  .link-btn:hover { text-decoration: underline; }
+  .back-link { margin-bottom: 14px; font-size: 14px; }
+  .series-card { padding: 4px 0 0; }
+  .series-card.paused { opacity: 0.75; }
+  .series-top { padding: 10px 14px 6px; }
+  .series-title { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .series-rule { margin-top: 4px; font-size: 14px; color: var(--ink-mid); font-weight: 600; }
+  .series-meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; }
+  .series-actions { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 14px 12px; }
+  .danger-text { color: var(--q1); }
 
   /* ─── TIP CALLOUT ───────────────────────────────────────────────── */
   .tip {
@@ -949,6 +962,13 @@
           <span>
             Garden
             <span class="menu-item-sub">Your sliced to-dos and progress</span>
+          </span>
+        </button>
+        <button class="menu-item" id="miRepeats" role="menuitem">
+          <span style="width:18px;text-align:center">↻</span>
+          <span>
+            Repeating
+            <span class="menu-item-sub">See and edit recurring to-dos</span>
           </span>
         </button>
         <div class="menu-divider"></div>
@@ -1383,6 +1403,7 @@ function recordSlice(t, sub = null) {
     slicedAt: now, dueAt: due ? due.getTime() : null, onTime: due ? now <= due.getTime() : null,
     duration: x.duration || 30, focusMin: sub ? 0 : (t.focusMin || 0), details: x.details || "",
     tree: treeFor(sub ? `${t.id}:${sub.id}` : t.id),
+    seriesId: t.repeat ? seriesKey(t) : null,
   });
 }
 function unrecordSlice(t, sub = null) {
@@ -1446,6 +1467,7 @@ function normalizeRepeat(r) {
     count: Math.max(1, Math.round(Number(r.count) || 10)),
     lead: r.lead == null || r.lead === "" ? null : Math.max(0, Number(r.lead)), // pop in this many minutes before; null = right away
     n: Math.max(1, Math.round(Number(r.n) || 1)), // which one in the series this is
+    paused: !!r.paused,                       // paused: hidden, and no next one is made
   };
 }
 function addMonthsKeep(d, k, day) {
@@ -1491,7 +1513,8 @@ function popTimeFor(t) {
   const base = at(t.dueDate, t.dueTime || "00:00").getTime() - r.lead * 60000;
   return base > Date.now() ? base : 0;
 }
-const isShown = (t) => !t.showAt || t.showAt <= Date.now();
+const isShown = (t) => !t.repeat?.paused && (!t.showAt || t.showAt <= Date.now());
+const seriesKey = (t) => t.seriesId || t.id;
 function repeatText(r, t) {
   if (!r) return "";
   const n = r.every;
@@ -1515,7 +1538,9 @@ function repeatShort(r) {
   return n === 1 ? "yearly" : `every ${n} years`;
 }
 function repeatBadge(t) {
-  return t.repeat ? el("span", { class: "badge", style: { "--c": "var(--q2)" }, title: repeatText(t.repeat, t), text: `↻ ${repeatShort(t.repeat)}` }) : null;
+  if (!t.repeat) return null;
+  if (t.repeat.paused) return el("span", { class: "badge", title: repeatText(t.repeat, t), text: "⏸ paused" });
+  return el("span", { class: "badge", style: { "--c": "var(--q2)" }, title: repeatText(t.repeat, t), text: `↻ ${repeatShort(t.repeat)}` });
 }
 // Make a fresh copy of a to-do (new id, not done, parts reset).
 function cloneTask(t, extra = {}) {
@@ -2556,8 +2581,8 @@ function completeTask(task, fromEl) {
   recordSlice(task);
   celebrate(fromEl);
   const unlocked = waiting.filter(t => !isBlocked(t));
-  const next = task.repeat ? spawnNext(task) : null;
-  const nextNote = next ? ` Next one: ${at(next.dueDate).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}${next.showAt ? " (it pops in later)" : ""}.` : "";
+  const next = task.repeat && !task.repeat.paused ? spawnNext(task) : null;
+  const nextNote = task.repeat?.paused ? " This series is paused, so no next one was made." : next ? ` Next one: ${at(next.dueDate).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}${next.showAt ? " (it pops in later)" : ""}.` : "";
   toast((unlocked.length ? `Done! Unlocked: ${unlocked.map(t => t.text).join(", ")}.` : PRAISE[Math.floor(Math.random() * PRAISE.length)]) + nextNote);
   if (_stepsOpenFor === task.id) _stepsOpenFor = null;
   resetTimer();
@@ -4437,6 +4462,112 @@ function openGarden() {
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
+/* ─── REPEATING: see and edit every series ──────────────────── */
+function repeatingTasks() {
+  // One open to-do per series (the newest one, if there are ever two).
+  const bySeries = new Map();
+  state.tasks.filter(t => t.repeat && !t.done).forEach(t => {
+    const k = seriesKey(t), cur = bySeries.get(k);
+    if (!cur || (t.repeat.n || 1) > (cur.repeat.n || 1)) bySeries.set(k, t);
+  });
+  return [...bySeries.values()].sort((a, b) =>
+    (a.repeat.paused - b.repeat.paused) || cmp(dueMs(a), dueMs(b)) || a.text.localeCompare(b.text));
+}
+function pauseSeries(t, paused) {
+  t.repeat.paused = paused;
+  if (!paused) t.showAt = popTimeFor(t);
+  logEvent(t, paused ? "paused" : "resumed");
+  saveState(); render();
+  toast(paused ? `Paused “${t.text}”. It is hidden, and no new ones will be made.` : `Resumed “${t.text}”.`);
+}
+function stopRepeating(t) {
+  if (!confirm(`Stop repeating “${t.text}”? This one stays as a normal to-do.`)) return;
+  t.repeat = null;
+  t.showAt = 0;
+  logEvent(t, "stopped repeating");
+  if (_openFor === t.id) _openFor = null;
+  saveState(); render();
+  toast("It no longer repeats.");
+}
+function deleteSeries(t) {
+  if (!confirm(`Delete the series “${t.text}”? Past slices stay in your garden.`)) return;
+  deleteTask(t);
+  if (_openFor === t.id) _openFor = null;
+  saveState(); render();
+}
+
+function seriesCard(t) {
+  const r = t.repeat, open = _openFor === t.id;
+  const past = state.garden.filter(g => !g.isSub && g.seriesId != null && g.seriesId === seriesKey(t));
+  const last = past.length ? past[past.length - 1].slicedAt : 0;
+  const due = dueInfo(t);
+  const status = r.paused ? el("span", { class: "badge", text: "⏸ Paused" })
+    : !isShown(t) ? el("span", { class: "badge calm", text: `Pops in ${new Date(t.showAt).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}` })
+    : el("span", { class: "badge", style: { "--c": "var(--good)" }, text: "Showing now" });
+  const btn = (label, fn, cls = "") => el("button", { class: `btn btn-sm ${cls}`, type: "button", text: label, onclick: fn });
+  return el("div", { class: `home-row series-card ${open ? "open" : ""} ${r.paused ? "paused" : ""}`, style: { "--c": importanceColor(importanceOf(t)) } }, [
+    el("div", { class: "series-top" }, [
+      el("div", { class: "series-main" }, [
+        el("div", { class: "series-title" }, [
+          el("span", { class: "up-text", style: { fontWeight: "700" }, text: t.text }),
+          importanceBadge(t), ...tagBadges(t),
+        ]),
+        el("div", { class: "series-rule", text: `↻ ${repeatText(r, t)}` }),
+        el("div", { class: "series-meta" }, [
+          status,
+          t.dueDate ? el("span", { class: "badge", text: `Next due ${at(t.dueDate).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}${t.dueTime ? " " + t.dueTime : ""}` }) : null,
+          due && !r.paused ? el("span", { class: `badge ${due.cls}`, "data-due": String(t.id), text: due.short }) : null,
+          el("span", { class: "hint", style: { margin: 0 }, text: `#${r.n} in this series · done ${plural(past.length, "time")}${last ? ` · last ${new Date(last).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}` : ""}` }),
+        ]),
+      ]),
+    ]),
+    el("div", { class: "series-actions" }, [
+      btn(open ? "Close" : "Edit", () => { _openFor = open ? null : t.id; _stepsOpenFor = _openFor; render(); }, open ? "btn-dark" : "btn-primary"),
+      r.paused ? null : btn("Skip next", () => skipRepeat(t)),
+      !r.paused && !isShown(t) ? btn("Show now", () => { t.showAt = 0; logEvent(t, "popped in", "early"); saveState(); render(); }) : null,
+      btn(r.paused ? "Resume" : "Pause", () => pauseSeries(t, !r.paused)),
+      btn("Stop repeating", () => stopRepeating(t), "btn-ghost"),
+      btn("Delete series", () => deleteSeries(t), "btn-ghost danger-text"),
+    ]),
+    open ? homeEditor(t) : null,
+  ]);
+}
+
+function renderRepeats() {
+  const list = repeatingTasks();
+  const wrap = el("div", {}, [
+    el("button", { class: "link-btn back-link", type: "button", html: `← My to-dos`, onclick: () => openHome() }),
+    el("div", { class: "phase-header" }, [
+      el("h1", { class: "phase-title", text: "Repeating to-dos" }),
+      el("p", { class: "phase-sub", text: "Every series in one place. Changes apply to the next one and every one after it." }),
+    ]),
+  ]);
+  const input = taskInput("repeat-input", "Add a repeating to-do… (it starts weekly, due today)", (text) => {
+    const t = addTask(text);
+    if (!t) return;
+    t.dueDate = todayISO();
+    t.repeat = normalizeRepeat({ freq: "week", every: 1, days: [new Date().getDay()], day: new Date().getDate() });
+    logEvent(t, "repeat", repeatText(t.repeat, t));
+    _openFor = t.id;
+  });
+  wrap.appendChild(input);
+  if (!list.length) {
+    wrap.appendChild(el("div", { class: "empty", text: "No repeating to-dos yet. Add one above, or open any to-do and set Repeat." }));
+  } else {
+    const active = list.filter(t => !t.repeat.paused).length;
+    wrap.appendChild(el("div", { class: "hint", text: `${list.length} series`.replace(/^1 series/, "1 series") + `${active !== list.length ? ` · ${list.length - active} paused` : ""}` }));
+    wrap.appendChild(el("div", { class: "home-list" }, list.map(seriesCard)));
+  }
+  return wrap;
+}
+
+function openRepeats() {
+  _view = "repeats";
+  _openFor = null;
+  render(true);
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
 /* ---- home editor, list rows, and the page ---- */
 // "Must finish first": chips you can remove, plus a menu to add one.
 function linksEditor(t) {
@@ -4559,7 +4690,7 @@ const HISTORY_LABEL = {
   tags: "Tags", details: "Details edited", "sub added": "Sub-bubble added", "sub removed": "Sub-bubble removed",
   "sub sliced": "Sub-bubble sliced", "sub reopened": "Sub-bubble reopened", "sub moved": "Sub-bubble moved", "in order": "In order", linked: "Linked", sliced: "Sliced (done)",
   reopened: "Reopened", renamed: "Renamed", repeat: "Repeat", skipped: "Skipped", snoozed: "Hidden",
-  "popped in": "Popped in",
+  "popped in": "Popped in", paused: "Paused", resumed: "Resumed", "stopped repeating": "Stopped repeating",
 };
 function historyBlock(t) {
   const items = (t.history || []).slice().reverse();
@@ -4723,7 +4854,10 @@ function repeatEditor(t) {
       r ? el("div", {}, [el("span", { class: "section-label", text: "Next ones pop in" }), el("div", { class: "controls" }, [lead])]) : null,
     ]),
     custom,
-    r ? el("div", { class: "hint", style: { margin: 0 }, text: `${repeatText(r, t)}. When you slice this one, the next one is made${r.lead == null ? " and shows right away" : ", and it pops in " + LEAD_OPTIONS.find(([v]) => v === String(r.lead))[1].toLowerCase()}. This is #${r.n}.` }) : null,
+    r ? el("div", { class: "hint", style: { margin: 0 } }, [
+      `${repeatText(r, t)}. When you slice this one, the next one is made${r.lead == null ? " and shows right away" : ", and it pops in " + LEAD_OPTIONS.find(([v]) => v === String(r.lead))[1].toLowerCase()}. This is #${r.n}. `,
+      _view === "repeats" ? null : el("button", { class: "link-btn", type: "button", text: "Manage all repeating to-dos →", onclick: () => openRepeats() }),
+    ]) : null,
     el("div", {}, [
       el("span", { class: "section-label", text: "Hide until later" }),
       el("div", { class: "controls" }, [
@@ -4869,7 +5003,7 @@ function renderHome() {
   }
 
   // Hidden for now: they pop in later.
-  const later = state.tasks.filter(t => !t.done && !isShown(t)).sort((a, b) => a.showAt - b.showAt);
+  const later = state.tasks.filter(t => !t.done && !isShown(t) && !t.repeat?.paused).sort((a, b) => a.showAt - b.showAt);
   if (later.length) {
     wrap.appendChild(el("div", { class: "section" }, [
       el("span", { class: "section-label", text: `Coming up (${later.length})` }),
@@ -4911,6 +5045,18 @@ function renderHome() {
       el("span", { class: "hint", style: { margin: 0, display: "block" }, text: state.garden.length
         ? `${plural(state.garden.length, "slice")} so far. See your progress and your trees.`
         : "Slice a to-do (hold down on a bubble) to plant your garden." }),
+    ]),
+    el("span", { html: ARROW_SVG }),
+  ]));
+
+  const series = repeatingTasks();
+  wrap.appendChild(el("button", { class: "garden-link repeat-link", type: "button", onclick: openRepeats }, [
+    el("span", { class: "garden-link-icon", text: "↻" }),
+    el("span", {}, [
+      el("strong", { text: `Repeating${series.length ? ` (${series.length})` : ""}` }),
+      el("span", { class: "hint", style: { margin: 0, display: "block" }, text: series.length
+        ? `${series.filter(t => !t.repeat.paused).length} active${series.some(t => t.repeat.paused) ? `, ${series.filter(t => t.repeat.paused).length} paused` : ""}. See and edit them all.`
+        : "Set up to-dos that come back: daily, weekly, monthly…" }),
     ]),
     el("span", { html: ARROW_SVG }),
   ]));
@@ -4990,11 +5136,11 @@ function render(animate = false) {
   content.classList.remove("enter");
   if (animate) { void content.offsetWidth; content.classList.add("enter"); }
 
-  const home = _view === "home" || _view === "garden";
+  const home = _view === "home" || _view === "garden" || _view === "repeats";
   $("#nav").style.display = home ? "none" : "";
   $("#pips").classList.toggle("on-home", home);
   if (home) {
-    content.appendChild(_view === "garden" ? renderGarden() : renderHome());
+    content.appendChild(_view === "garden" ? renderGarden() : _view === "repeats" ? renderRepeats() : renderHome());
     $("#quoteSlot").innerHTML = "";
     return;
   }
@@ -5452,6 +5598,7 @@ $("#miSaveAll").addEventListener("click", () => { closeMenu(); downloadFullSessi
 $("#fileInput").addEventListener("change", handleFileImport);
 $("#miDrive").addEventListener("click", () => { closeMenu(); driveConnect(); });
 $("#miGarden").addEventListener("click", () => { closeMenu(); openGarden(); });
+$("#miRepeats").addEventListener("click", () => { closeMenu(); openRepeats(); });
 $("#miDriveOff").addEventListener("click", () => {
   closeMenu();
   drive.on = false; drive.token = ""; driveStore();
