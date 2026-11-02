@@ -808,6 +808,11 @@
   .garden-link strong { font-family: var(--head); font-size: 17px; }
   .garden-link > span:nth-child(2) { flex: 1; }
   .garden-link-icon { font-size: 26px; }
+  .sync-banner {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: space-between;
+    margin: -6px 0 14px; padding: 10px 14px; border-radius: 10px;
+    background: var(--accent-soft); color: var(--accent-ink); font-size: 14px; font-weight: 600;
+  }
   .repeat-link { background: var(--steel-soft); border-color: color-mix(in srgb, var(--q2) 30%, transparent); margin-top: 10px; }
   .repeat-link .garden-link-icon { color: var(--q2); font-weight: 800; width: 26px; text-align: center; }
   .link-btn { border: none; background: none; padding: 0; cursor: pointer; color: var(--accent-ink); font-weight: 700; font-size: 13px; }
@@ -1145,6 +1150,7 @@ const defaultState = () => ({
   reflectNotes: "",
   garden: [],   // every finished ("sliced") to-do; kept across sessions
   library: [],  // saved to-dos you can add again in one tap
+  removed: [],  // deleted items {list, id, at}, so a sync does not bring them back
   savedAt: 0,
 });
 
@@ -1174,6 +1180,7 @@ function normalizeTask(t) {
     spawnedNext: t.spawnedNext ?? null,
     // Hidden until this time, then it pops in (0 = showing now).
     showAt: Number(t.showAt) || 0,
+    updatedAt: Number(t.updatedAt) || 0, // last change on any computer (for syncing)
     // Due date (the deadline). With no time, it is due at the end of that day.
     dueDate: typeof t.dueDate === "string" ? t.dueDate : "",
     dueTime: typeof t.dueTime === "string" ? t.dueTime : "",
@@ -1211,6 +1218,7 @@ function normalizeBlock(b) {
     start: typeof b.start === "string" ? b.start : "",
     end: typeof b.end === "string" ? b.end : "",
     weekly: !!b.weekly,
+    updatedAt: Number(b.updatedAt) || 0,
   };
 }
 
@@ -1224,6 +1232,7 @@ function hydrate(parsed, fromV1 = false) {
     blocks: (parsed.blocks || []).map(normalizeBlock),
     garden: Array.isArray(parsed.garden) ? parsed.garden.filter(g => g && g.text) : [],
     library: Array.isArray(parsed.library) ? parsed.library.filter(x => x && x.text) : [],
+    removed: Array.isArray(parsed.removed) ? parsed.removed.filter(r => r && r.list && r.id != null && r.at > Date.now() - 90 * 86400e3) : [],
   };
   if (fromV1) {
     // v1 had 7 phases: "Just Do It" (5) and "Reflect" (6) moved one step later.
@@ -1247,7 +1256,33 @@ function loadState() {
 // which copy is newer.
 let _savedSig = null;
 function stateSig() { const { savedAt, ...rest } = state; return JSON.stringify(rest); }
+
+// For syncing between computers: each to-do, block, saved to-do and slice
+// gets the time it last changed, and deleted ones are remembered.
+const SYNC_LISTS = ["tasks", "blocks", "library", "garden"];
+let _itemSigs = null;
+function itemSigs() {
+  const m = {};
+  SYNC_LISTS.forEach(k => { m[k] = new Map((state[k] || []).map(x => [String(x.id), JSON.stringify({ ...x, updatedAt: 0 })])); });
+  return m;
+}
+function stampChanges() {
+  if (!_itemSigs) { _itemSigs = itemSigs(); return; }
+  const now = Date.now(), next = itemSigs();
+  for (const k of SYNC_LISTS) {
+    for (const x of state[k] || []) {
+      const id = String(x.id);
+      if (_itemSigs[k].get(id) !== next[k].get(id)) x.updatedAt = now;
+    }
+    for (const id of _itemSigs[k].keys()) {
+      if (!next[k].has(id)) (state.removed || (state.removed = [])).push({ list: k, id, at: now });
+    }
+  }
+  _itemSigs = next;
+}
+
 function saveState() {
+  stampChanges();
   const sig = stateSig();
   if (_savedSig !== null && sig !== _savedSig) { state.savedAt = Date.now(); driveAutoSave(); }
   _savedSig = sig;
@@ -4922,6 +4957,8 @@ function renderHome() {
   const input = taskInput("home-input", "Add a to-do… #friends for a tag, !6 for importance", (text) => addTask(text));
   input.classList.add("home-input");
   wrap.appendChild(input);
+  const banner = syncBanner();
+  if (banner) wrap.appendChild(banner);
   if (state.library.length) {
     wrap.appendChild(el("div", { class: "tag-row saved-row" }, [
       el("span", { class: "hint", style: { margin: 0 }, text: "Saved:" }),
@@ -5165,7 +5202,7 @@ function render(animate = false) {
     nextBtn.onclick = () => {
       if (confirm("Reset and start a new session? Your current session will be cleared from this browser. (Use Save Session first if you want a copy.)")) {
         const keep = state.tasks.filter(t => t.repeat && !t.done);
-        state = { ...defaultState(), garden: state.garden, library: state.library, tasks: keep };
+        state = { ...defaultState(), garden: state.garden, library: state.library, removed: state.removed, tasks: keep };
         saveState(); render(true);
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
@@ -5423,6 +5460,7 @@ const drive = (() => {
   try { return { on: false, fileId: "", clientId: "", token: "", exp: 0, lastSaved: 0, ...JSON.parse(localStorage.getItem(DRIVE_KEY) || "{}") }; }
   catch { return { on: false, fileId: "", clientId: "", token: "", exp: 0, lastSaved: 0 }; }
 })();
+if (!drive.deviceId) drive.deviceId = Math.random().toString(36).slice(2, 10);
 const driveStore = () => { try { localStorage.setItem(DRIVE_KEY, JSON.stringify(drive)); } catch {} };
 const driveTokenOk = () => drive.token && Date.now() < drive.exp - 60000;
 
@@ -5487,7 +5525,7 @@ async function driveFindFile() {
   return drive.fileId;
 }
 
-const drivePayload = () => JSON.stringify({ type: "sharp-axe-drive", version: 1, savedAt: state.savedAt, state });
+const drivePayload = () => JSON.stringify({ type: "sharp-axe-drive", version: 2, savedAt: state.savedAt, deviceId: drive.deviceId, state });
 
 async function driveWrite() {
   const id = await driveFindFile();
@@ -5516,40 +5554,129 @@ async function driveWrite() {
   driveStore();
 }
 
-// If Drive has a newer copy (saved on another device), offer to load it.
-async function driveCheckNewer() {
-  const id = await driveFindFile();
-  if (!id) return false;
-  const remote = await (await gfetch(`${DRIVE_API}/files/${id}?alt=media`)).json();
-  if (!remote?.state || !(remote.savedAt > (state.savedAt || 0))) return false;
-  const when = new Date(remote.savedAt).toLocaleString();
-  if (!confirm(`Google Drive has a newer copy (saved ${when}).\n\nOK = Load it (replaces what is on this device)\nCancel = Keep this device's copy`)) return false;
-  state = hydrate(remote.state);
-  _savedSig = stateSig();
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
+// When an item last changed. Older saves have no updatedAt, so use its history.
+function touchedAt(x) {
+  if (!x) return 0;
+  if (x.updatedAt) return x.updatedAt;
+  return Math.max(0, x.doneAt || 0, x.createdAt || 0, x.slicedAt || 0, x.savedAt || 0,
+    ...((x.history || []).map(h => h.at || 0)));
+}
+// Join two copies of the data without losing work: every to-do, block,
+// saved to-do and slice from both, the newer version when both have it,
+// and deletions from either side. Step, checklists and notes come from
+// whichever copy changed last.
+function mergeStates(local, remote) {
+  const removed = new Map();
+  for (const r of [...(local.removed || []), ...(remote.removed || [])]) {
+    const k = `${r.list}:${r.id}`;
+    if (!removed.has(k) || removed.get(k) < r.at) removed.set(k, r.at);
+  }
+  const newer = (remote.savedAt || 0) > (local.savedAt || 0) ? remote : local;
+  const out = { ...newer };
+  for (const k of SYNC_LISTS) {
+    const map = new Map();
+    for (const x of [...(local[k] || []), ...(remote[k] || [])]) {
+      const id = String(x.id), cur = map.get(id);
+      if (!cur || touchedAt(x) > touchedAt(cur)) map.set(id, x);
+    }
+    out[k] = [...map.values()].filter(x => {
+      const gone = removed.get(`${k}:${x.id}`);
+      return !(gone && gone >= touchedAt(x)); // a change after the delete brings it back
+    });
+  }
+  out.removed = [...removed].map(([k, at]) => { const i = k.indexOf(":"); return { list: k.slice(0, i), id: k.slice(i + 1), at }; });
+  out.savedAt = Math.max(local.savedAt || 0, remote.savedAt || 0);
+  return out;
+}
+
+// Sync = read Drive, merge, then write the merged copy back. Nothing is
+// written before the first successful read, so a new computer cannot
+// overwrite what is already in Drive.
+let _drivePulled = false, _syncing = null, _lastSync = 0;
+function driveSync() {
+  if (_syncing) return _syncing;
+  _syncing = (async () => {
+    const id = await driveFindFile();
+    let brought = 0, fromOther = false;
+    if (id) {
+      const remote = await (await gfetch(`${DRIVE_API}/files/${id}?alt=media`)).json();
+      if (remote?.state) {
+        fromOther = remote.deviceId && remote.deviceId !== drive.deviceId;
+        const before = new Set(state.tasks.map(t => String(t.id)));
+        state = hydrate(mergeStates(state, hydrate(remote.state)));
+        _itemSigs = itemSigs();
+        _savedSig = stateSig();
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
+        brought = state.tasks.filter(t => !before.has(String(t.id))).length;
+      }
+    }
+    _drivePulled = true;
+    await driveWrite();
+    drive.dirty = false;
+    drive.lastSync = _lastSync = Date.now();
+    driveStore();
+    return { brought, fromOther };
+  })();
+  _syncing.finally(() => { _syncing = null; }).catch(() => {}); // the caller handles the error
+  return _syncing;
+}
+// Redraw after a sync, but not while you are typing.
+function softRender() {
+  const a = document.activeElement;
+  if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) { if (_view === "home") syncJar(); return; }
   render();
-  toast("Loaded your data from Google Drive");
-  return true;
 }
 
 async function driveConnect() {
   try {
     await driveSignIn();
     drive.on = true; driveStore();
-    const loaded = await driveCheckNewer();
-    if (!loaded) await driveWrite();
-    toast(loaded ? "Google Drive is on" : "Saved to Google Drive");
+    const { brought, fromOther } = await driveSync();
+    softRender();
+    toast(brought ? `Synced. Brought in ${plural(brought, "to-do")} from ${fromOther ? "your other computer" : "Google Drive"}.` : "Synced with Google Drive.");
   } catch (e) {
+    drive.dirty = true; driveStore();
     toast(e.message || "Google Drive did not work", "error");
   }
   renderDriveMenu();
 }
 
+// A quiet sync (on load, when you come back to the tab, every few minutes).
+async function driveQuietSync() {
+  if (!drive.on || !driveTokenOk() || _syncing) return;
+  try {
+    const { brought, fromOther } = await driveSync();
+    if (brought) { softRender(); toast(`Synced. Brought in ${plural(brought, "to-do")} from ${fromOther ? "your other computer" : "Google Drive"}.`); }
+  } catch { drive.dirty = true; driveStore(); }
+  renderDriveMenu();
+}
+
 let _driveTimer = null;
 function driveAutoSave() {
-  if (!drive.on || !driveTokenOk()) return;
+  if (!drive.on) return;
+  if (!driveTokenOk()) {
+    // Signed out (Google keeps you signed in for 1 hour): remember there is
+    // something to sync, and show the banner instead of failing silently.
+    if (!drive.dirty) { drive.dirty = true; driveStore(); }
+    return;
+  }
   clearTimeout(_driveTimer);
-  _driveTimer = setTimeout(() => driveWrite().catch(e => toast(e.message, "error")).finally(renderDriveMenu), 3000);
+  _driveTimer = setTimeout(() => {
+    (_drivePulled ? driveWrite().then(() => { drive.dirty = false; drive.lastSync = _lastSync = Date.now(); driveStore(); }) : driveSync())
+      .catch(e => { drive.dirty = true; driveStore(); toast(e.message, "error"); })
+      .finally(renderDriveMenu);
+  }, 3000);
+}
+
+// Shown when sync is on but the sign-in has run out.
+function syncBanner() {
+  if (!drive.on || driveTokenOk()) return null;
+  return el("div", { class: "sync-banner" }, [
+    el("span", { text: drive.dirty
+      ? "Not synced to Google Drive. You have changes that are only on this computer."
+      : "Google Drive sign-in ran out. Sign in to get changes from your other computer." }),
+    el("button", { class: "btn btn-sm btn-primary", type: "button", text: "Sync now", onclick: () => driveConnect().then(() => render()) }),
+  ]);
 }
 
 function renderDriveMenu() {
@@ -5557,8 +5684,8 @@ function renderDriveMenu() {
   if (!sub) return;
   off.hidden = !drive.on;
   if (!drive.on) sub.textContent = "Save your data to Drive";
-  else if (!driveTokenOk()) sub.textContent = "Tap to sign in again and sync";
-  else sub.textContent = drive.lastSaved ? `On · saved ${new Date(drive.lastSaved).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}` : "On";
+  else if (!driveTokenOk()) sub.textContent = drive.dirty ? "Not synced · tap to sign in and sync" : "Tap to sign in again and sync";
+  else sub.textContent = drive.lastSync ? `On · synced ${new Date(drive.lastSync).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}` : "On";
 }
 
 /* ─── MENU WIRING ───────────────────────────────────────────── */
@@ -5601,13 +5728,14 @@ $("#miGarden").addEventListener("click", () => { closeMenu(); openGarden(); });
 $("#miRepeats").addEventListener("click", () => { closeMenu(); openRepeats(); });
 $("#miDriveOff").addEventListener("click", () => {
   closeMenu();
-  drive.on = false; drive.token = ""; driveStore();
+  drive.on = false; drive.token = ""; _drivePulled = false; driveStore();
   toast("Google Drive is off. Your Drive file stays.");
 });
 $("#brand").addEventListener("click", openHome);
 $("#brand").addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openHome(); } });
 
 /* ─── KICKOFF ───────────────────────────────────────────────── */
+_itemSigs = itemSigs();
 _savedSig = stateSig();
 render(true);
 window.addEventListener("beforeunload", saveState);
@@ -5621,7 +5749,11 @@ setInterval(() => {
   if (!typing && !_openFor && (_view === "home" || PHASES[state.phase].type === "triage")) render();
 }, 60000);
 
-if (drive.on && driveTokenOk()) driveCheckNewer().catch(() => {});
+driveQuietSync();
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && Date.now() - _lastSync > 20000) driveQuietSync();
+});
+setInterval(() => { if (document.visibilityState === "visible") driveQuietSync(); }, 5 * 60000);
 setInterval(checkPopIns, 15000);
 checkPopIns();
 </script>
