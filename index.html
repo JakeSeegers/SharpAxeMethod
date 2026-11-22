@@ -870,6 +870,38 @@
   }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
   .toast.error { background: #a32020; color: #fff; }
+  .toast.has-action { pointer-events: auto; display: flex; align-items: center; gap: 14px; }
+  .toast-action {
+    background: transparent; color: inherit; border: 1px solid currentColor; border-radius: 7px;
+    padding: 4px 10px; font: inherit; font-size: 13px; cursor: pointer; opacity: 0.9;
+  }
+  .toast-action:hover { opacity: 1; }
+
+  /* ─── DIALOG (import choice) ────────────────────────────────────── */
+  .dialog-overlay {
+    position: fixed; inset: 0; z-index: 150; background: rgba(0,0,0,0.4);
+    display: flex; align-items: center; justify-content: center; padding: 16px;
+  }
+  .dialog {
+    background: var(--surface); color: var(--ink); border: 1px solid var(--line);
+    border-radius: 14px; padding: 20px; width: 100%; max-width: 440px;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.25); display: flex; flex-direction: column; gap: 10px;
+  }
+  .dialog-title { margin: 0; font-size: 19px; }
+  .dialog-sub { margin: 0 0 4px; color: var(--ink-mid); font-size: 14px; }
+  .dialog-choice {
+    display: flex; flex-direction: column; gap: 3px; text-align: left; cursor: pointer;
+    background: var(--surface-2); color: var(--ink); border: 1.5px solid var(--line-strong);
+    border-radius: 10px; padding: 12px 14px; font: inherit;
+  }
+  .dialog-choice:hover, .dialog-choice:focus-visible { border-color: var(--accent); }
+  .dialog-choice.danger:hover, .dialog-choice.danger:focus-visible { border-color: var(--q1); }
+  .dialog-choice strong { font-size: 15px; }
+  .dialog-choice span { font-size: 13px; color: var(--ink-mid); line-height: 1.4; }
+  .clear-row { margin-top: 10px; }
+  .badge.demand-low    { --c: var(--good); }
+  .badge.demand-medium { --c: var(--amber); }
+  .badge.demand-high   { --c: var(--q1); }
 
   /* ─── PHASE TRANSITIONS ─────────────────────────────────────────── */
   .phase-content.enter { animation: fadeIn 0.3s ease; }
@@ -935,7 +967,7 @@
           </svg>
           <span>
             Import Todos
-            <span class="menu-item-sub">Load tasks from a .json file</span>
+            <span class="menu-item-sub">Replace or add to your list from a .json file</span>
           </span>
         </button>
         <button class="menu-item" id="miExport" role="menuitem">
@@ -946,7 +978,18 @@
           </svg>
           <span>
             Export Todos
-            <span class="menu-item-sub">Save tasks as .json</span>
+            <span class="menu-item-sub">Save tasks as .json (easy for AI to read)</span>
+          </span>
+        </button>
+        <button class="menu-item" id="miClearAll" role="menuitem">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3,6 5,6 21,6"/>
+            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+            <path d="M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+          </svg>
+          <span>
+            Clear All Todos
+            <span class="menu-item-sub">Delete every to-do (you can undo)</span>
           </span>
         </button>
         <div class="menu-divider"></div>
@@ -1131,6 +1174,23 @@ const QUADRANTS = [
 const QUADRANT_IDS = QUADRANTS.map(q => q.id);
 const qInfo = (id) => QUADRANTS.find(q => q.id === id);
 
+// Defined before the state loads, because loading uses them.
+const DEMANDS = [
+  { id: "low",    label: "Low",    sub: "Easy to start, little pressure" },
+  { id: "medium", label: "Medium", sub: "Takes some energy" },
+  { id: "high",   label: "High",   sub: "Big ask, high pressure" },
+];
+const DEMAND_IDS = DEMANDS.map(d => d.id);
+function normalizeDemand(v) {
+  const x = String(v ?? "").trim().toLowerCase();
+  if (DEMAND_IDS.includes(x)) return x;
+  if (x === "med" || x === "mid") return "medium";
+  if (x === "1") return "low";
+  if (x === "2") return "medium";
+  if (x === "3") return "high";
+  return null;
+}
+
 /* ─── STATE ─────────────────────────────────────────────────── */
 let _uidSeq = 0;
 const uid = () => Date.now() * 100 + (_uidSeq++ % 100);
@@ -1172,6 +1232,8 @@ function normalizeTask(t) {
     after: Array.isArray(t.after) ? t.after.filter(x => x != null && x !== t.id) : [],
     // Importance 1 (low) … 7 (very important). Empty = not set yet.
     importance: Number(t.importance) >= 1 && Number(t.importance) <= 7 ? Math.round(Number(t.importance)) : null,
+    // How much it asks of you (energy, stress, demand): "low", "medium", "high", or null (not set).
+    demand: normalizeDemand(t.demand),
     // Sub-bubbles must be done in order (later parts lock until earlier ones are done).
     inOrder: !!t.inOrder,
     // Repeats like a calendar event. Each one is its own to-do in a series.
@@ -1643,7 +1705,7 @@ function checkPopIns() {
 /* ─── SAVED TO-DOS (a small library you can add from) ───────── */
 function saveToLibrary(t) {
   const item = {
-    id: uid(), text: t.text, importance: t.importance, tags: [...(t.tags || [])], duration: t.duration,
+    id: uid(), text: t.text, importance: t.importance, demand: t.demand || null, tags: [...(t.tags || [])], duration: t.duration,
     details: t.details || "", inOrder: !!t.inOrder,
     repeat: t.repeat ? { ...t.repeat, n: 1 } : null, dueTime: t.dueTime || "",
     steps: (t.steps || []).map(s => ({ text: s.text, duration: s.duration, details: s.details || "" })),
@@ -1656,7 +1718,7 @@ function saveToLibrary(t) {
 }
 function addFromLibrary(item) {
   const t = normalizeTask({
-    text: item.text, importance: item.importance, tags: item.tags, duration: item.duration,
+    text: item.text, importance: item.importance, demand: item.demand, tags: item.tags, duration: item.duration,
     details: item.details, inOrder: item.inOrder, repeat: item.repeat, dueTime: item.dueTime,
     dueDate: item.repeat ? todayISO() : "",
     steps: (item.steps || []).map(s => normalizeStep(s)),
@@ -1850,12 +1912,18 @@ const kindLine = () => KIND_LINES[Math.floor(Date.now() / 86400000) % KIND_LINES
 
 /* ─── TOAST ─────────────────────────────────────────────────── */
 let _toastTimer = null;
-function toast(msg, kind = "success") {
+// action (optional): { label, fn }, a button in the toast, like "Undo".
+function toast(msg, kind = "success", action = null) {
   const t = $("#toast");
   t.textContent = msg;
-  t.className = "toast show" + (kind === "error" ? " error" : "");
+  if (action) {
+    t.appendChild(el("button", { type: "button", class: "toast-action", text: action.label, onclick: () => {
+      clearTimeout(_toastTimer); t.classList.remove("show", "has-action"); action.fn();
+    } }));
+  }
+  t.className = "toast show" + (kind === "error" ? " error" : "") + (action ? " has-action" : "");
   clearTimeout(_toastTimer);
-  _toastTimer = setTimeout(() => t.classList.remove("show"), 2600);
+  _toastTimer = setTimeout(() => t.classList.remove("show", "has-action"), action ? 8000 : 2600);
 }
 
 /* ─── CONFETTI ──────────────────────────────────────────────── */
@@ -2145,9 +2213,10 @@ function taskRow(task, i) {
     el("button", {
       class: "icon-btn danger",
       type: "button",
-      "aria-label": "Remove",
+      "aria-label": "Delete",
+      title: "Delete (not done)",
       html: SVG.trash,
-      onclick: () => { state.tasks = state.tasks.filter(t => t.id !== task.id); saveState(); render(); },
+      onclick: () => deleteOne(task),
     }),
   ]);
 }
@@ -3065,7 +3134,8 @@ function renderReflect(p) {
 /* ─── HOME: MY TO-DOS ───────────────────────────────────────── */
 // The front page: add a to-do, see what matters most and what is soonest.
 let _view = "home";          // "home" or "steps"
-let _homeSort = "importance"; // or "soonest"
+let _homeSort = "importance"; // or "soonest", or "demand" (low demand first)
+let _demandFilter = ""; // "", "low", "medium", "high": show only that demand level in the list
 let _openFor = null;
 let _homeShowDone = false;
 
@@ -3083,6 +3153,14 @@ function importanceBadge(t) {
     text: t.importance ? `★ ${n}` : `★ ${n}?`,
   });
 }
+function demandBadge(t) {
+  if (!t.demand) return null;
+  const d = DEMANDS.find(x => x.id === t.demand);
+  return el("span", { class: `badge demand-${t.demand}`, title: `Demand: ${d.label}. ${d.sub}`, text: `${d.label} demand` });
+}
+// Low-demand first. Not set sits between medium and high.
+const DEMAND_RANK = { low: 0, medium: 1, high: 3 };
+const demandRank = (t) => DEMAND_RANK[t.demand] ?? 2;
 function dueMs(t) {
   const d = dueAt(t) || (t.steps || []).filter(s => !s.done).map(dueAt).filter(Boolean).sort((a, b) => a - b)[0];
   if (d) return d.getTime();
@@ -3094,7 +3172,9 @@ const cmp = (x, y) => x < y ? -1 : x > y ? 1 : 0;
 function homeCompare(a, b) {
   const imp = cmp(importanceOf(b), importanceOf(a)); // 7 first
   const urg = cmp(dueMs(a), dueMs(b));
-  return (_homeSort === "soonest" ? (urg || imp) : (imp || urg)) || state.tasks.indexOf(a) - state.tasks.indexOf(b);
+  const dem = cmp(demandRank(a), demandRank(b));
+  const order = _homeSort === "soonest" ? (urg || imp) : _homeSort === "demand" ? (dem || imp || urg) : (imp || urg);
+  return order || state.tasks.indexOf(a) - state.tasks.indexOf(b);
 }
 
 /* ─── TO-DO JAR (Matter.js physics) ─────────────────────────── */
@@ -3666,7 +3746,7 @@ function openJarMenu(hit, p) {
     item("Save for later", () => saveToLibrary(t)),
     t.repeat ? item("↻ Skip this one", () => skipRepeat(t)) : null,
     item("Link from here", () => { _tool = "link"; _linkFrom = t.id; render(); toast(`Now tap the to-do that waits for “${t.text}”.`); }),
-    item("Delete", () => { deleteTask(t); if (_openFor === t.id) _openFor = null; saveState(); render(); }, "danger"),
+    item("Delete", () => deleteOne(t), "danger"),
   ].filter(Boolean)));
   jar.menu.style.left = `${Math.min(p.x, jar.w - 180)}px`;
   jar.menu.style.top = `${Math.min(p.y, jar.h - 270)}px`;
@@ -4724,7 +4804,7 @@ const HISTORY_LABEL = {
   created: "Created", "importance": "Importance", "due changed": "Due date", "takes about": "Takes about",
   tags: "Tags", details: "Details edited", "sub added": "Sub-bubble added", "sub removed": "Sub-bubble removed",
   "sub sliced": "Sub-bubble sliced", "sub reopened": "Sub-bubble reopened", "sub moved": "Sub-bubble moved", "in order": "In order", linked: "Linked", sliced: "Sliced (done)",
-  reopened: "Reopened", renamed: "Renamed", repeat: "Repeat", skipped: "Skipped", snoozed: "Hidden",
+  reopened: "Reopened", renamed: "Renamed", demand: "Demand", repeat: "Repeat", skipped: "Skipped", snoozed: "Hidden",
   "popped in": "Popped in", paused: "Paused", resumed: "Resumed", "stopped repeating": "Stopped repeating",
 };
 function historyBlock(t) {
@@ -4764,6 +4844,18 @@ function homeEditor(t) {
       ]),
       t.importance ? null : el("div", { class: "hint", style: { margin: "6px 0 0" }, text: `Not set yet, so it counts as ${importanceOf(t)}.` }),
     ]),
+    el("div", {}, [
+      el("span", { class: "section-label", text: "How much does it ask of you? (energy, pressure)" }),
+      el("div", { class: "seg", role: "radiogroup", "aria-label": "Demand level" }, [
+        ...DEMANDS.map(d => el("button", {
+          type: "button", role: "radio", "aria-checked": String(t.demand === d.id),
+          class: t.demand === d.id ? "active" : "", text: d.label, title: d.sub,
+          onclick: () => { t.demand = d.id; logEvent(t, "demand", d.label.toLowerCase()); saveState(); render(); },
+        })),
+        el("button", { type: "button", class: t.demand ? "" : "active", text: "Not set",
+          onclick: () => { t.demand = null; logEvent(t, "demand", "not set"); saveState(); render(); } }),
+      ]),
+    ]),
     el("div", { class: "due-grid" }, [
       el("div", {}, [
         el("span", { class: "section-label", text: "Due" }),
@@ -4801,9 +4893,8 @@ function homeEditor(t) {
       el("button", { class: "btn btn-sm", type: "button", html: `${SVG.save}<span>Save for later</span>`,
         title: "Keep a copy in your Saved row, so you can add it again in one tap", onclick: () => { saveToLibrary(t); render(); } }),
       t.repeat ? el("button", { class: "btn btn-sm btn-ghost", type: "button", text: "↻ Skip this one", onclick: () => skipRepeat(t) }) : null,
-      el("button", { class: "btn btn-sm btn-ghost", type: "button", html: `${SVG.trash}<span>Delete</span>`, onclick: () => {
-        deleteTask(t); _openFor = null; saveState(); render();
-      } }),
+      el("button", { class: "btn btn-sm btn-ghost", type: "button", html: `${SVG.trash}<span>Delete</span>`,
+        title: "Remove it without marking it done (nothing goes to the garden)", onclick: () => deleteOne(t) }),
     ]),
   ]);
 }
@@ -4927,6 +5018,12 @@ function homeRow(t) {
       ...tagBadges(t),
       t.steps?.length ? el("span", { class: "badge", text: stepsLeft ? `${stepsLeft} of ${t.steps.length} parts left` : "Parts done" }) : null,
       importanceBadge(t),
+      demandBadge(t),
+      el("button", {
+        class: "icon-btn danger", type: "button", html: SVG.trash,
+        title: "Delete (not done, nothing goes to the garden)", "aria-label": `Delete “${t.text}”`,
+        onclick: () => deleteOne(t),
+      }),
       el("button", {
         class: "icon-btn", type: "button", html: SVG.edit,
         title: "Edit: importance, due, details, tags, links, sub-bubbles", "aria-label": "Edit", "aria-expanded": String(open),
@@ -4989,6 +5086,8 @@ function renderHome() {
     ]) : el("div", { class: "seg", "aria-label": "Sort" }, [
       el("button", { type: "button", class: _homeSort === "importance" ? "active" : "", text: "Most important", onclick: () => { _homeSort = "importance"; render(); } }),
       el("button", { type: "button", class: _homeSort === "soonest" ? "active" : "", text: "Soonest", onclick: () => { _homeSort = "soonest"; render(); } }),
+      el("button", { type: "button", class: _homeSort === "demand" ? "active" : "", text: "Low demand first",
+        title: "Easiest to start first: low demand, then medium, not set, high", onclick: () => { _homeSort = "demand"; render(); } }),
     ]),
     el("span", { class: "hint", style: { margin: 0 }, text: plural(open.length, "to-do") }),
   ]));
@@ -5003,6 +5102,17 @@ function renderHome() {
       })),
     ]));
   }
+
+  if (!bubbles && open.some(t => t.demand)) {
+    wrap.appendChild(el("div", { class: "tag-row" }, [
+      el("span", { class: "hint", style: { margin: 0 }, text: "Demand:" }),
+      el("button", { type: "button", class: `tag-chip ${_demandFilter ? "" : "active"}`, text: "Any", onclick: () => { _demandFilter = ""; render(); } }),
+      ...DEMANDS.map(d => el("button", {
+        type: "button", class: `tag-chip ${_demandFilter === d.id ? "active" : ""}`, text: d.label, title: d.sub,
+        onclick: () => { _demandFilter = _demandFilter === d.id ? "" : d.id; render(); },
+      })),
+    ]));
+  } else if (!open.some(t => t.demand)) _demandFilter = "";
 
   if (bubbles && _tool === "link") {
     wrap.appendChild(el("div", { class: "hint link-hint", text: _linkFrom
@@ -5029,7 +5139,7 @@ function renderHome() {
       ]));
     }
   } else {
-    const shown = _groupTag ? open.filter(t => hasTag(t, _groupTag)) : open;
+    const shown = open.filter(t => (!_groupTag || hasTag(t, _groupTag)) && (!_demandFilter || t.demand === _demandFilter));
     if (!shown.length) {
       wrap.appendChild(el("div", { class: "empty", text: state.tasks.length ? "Nothing open. Enjoy it." : "Nothing here yet. Add your first to-do above." }));
     } else {
@@ -5069,10 +5179,20 @@ function renderHome() {
           onclick: () => { reopenTask(t); saveState(); render(); },
         }),
         el("span", { class: "up-text", text: t.text }),
+        el("button", { class: "icon-btn danger", type: "button", html: SVG.trash,
+          title: "Delete from the list", "aria-label": `Delete “${t.text}”`, onclick: () => deleteOne(t) }),
       ])));
       sec.appendChild(dl);
     }
     wrap.appendChild(sec);
+  }
+  if (state.tasks.length) {
+    wrap.appendChild(el("div", { class: "controls clear-row" }, [
+      doneTasks.length ? el("button", { class: "btn btn-sm btn-ghost", type: "button", html: `${SVG.trash}<span>Clear done (${doneTasks.length})</span>`,
+        title: "Remove every done to-do from the list. Your garden keeps their slices.", onclick: clearDone }) : null,
+      el("button", { class: "btn btn-sm btn-ghost", type: "button", html: `${SVG.trash}<span>Clear all</span>`,
+        title: "Delete every to-do, open and done", onclick: clearAll }),
+    ]));
   }
 
   wrap.appendChild(el("button", { class: "garden-link", type: "button", onclick: openGarden }, [
@@ -5240,33 +5360,80 @@ function timestamp() {
   return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}`;
 }
 
-/* ---- EXPORT TODOS (just the task list, JSON for round-trip) ---- */
+/* ---- EXPORT TODOS (the task list as JSON, easy for people and AI to read) ---- */
+// The note at the top of every export. It explains the file to whoever reads
+// it next, including an AI helping to make a new list.
+const EXPORT_README = [
+  "This is a to-do list from the Sharp Axe Method app. Import it from the app's menu: Import Todos.",
+  "On import you choose: 'Replace my list' (the file becomes your whole list) or 'Add to my list' (new to-dos are added; a to-do with the same id as one you have is updated; nothing is removed).",
+  "To make a new list (for example with an AI): write {\"type\": \"sharp-axe-todos\", \"tasks\": [ ... ]}. A task only needs \"text\". Every other field is optional and gets a default.",
+  "A minimal task: {\"text\": \"Email Sam\", \"dueDate\": \"2026-11-24\", \"dueTime\": \"17:00\", \"quadrant\": \"q1\", \"importance\": 6, \"demand\": \"low\", \"tags\": [\"work\"], \"steps\": [\"Find the thread\", \"Write two lines\"]}.",
+  "A plain list of strings also works: [\"Email Sam\", \"Book a haircut\"].",
+  "Leave out \"id\" for new to-dos. Keep \"id\" when you edit an exported to-do, so 'Add to my list' updates it instead of adding a copy.",
+  "Fields:",
+  "  text: what to do (required).",
+  "  done: true or false.",
+  "  quadrant: q1 = Do First (urgent and important), q2 = Schedule (important, not urgent), quick = Under 3 Min, q4 = Eliminate, or null (not sorted yet). The names also work on import. quadrantName is only a label for reading.",
+  "  importance: 1 (low) to 7 (very important), or null (not set).",
+  "  demand: how much the to-do asks of you (energy, stress, pressure): low, medium, high, or null (not set).",
+  "  dueDate: the deadline day as YYYY-MM-DD, in local time. dueTime: HH:MM, 24-hour, local time. With a date and no time it is due at the end of that day. Empty string = no deadline. \"due\": \"YYYY-MM-DD HH:MM\" also works on import.",
+  "  duration: about how many minutes it takes (default 30).",
+  "  tags: a list of words, like [\"work\", \"friends\"].",
+  "  details: notes, links, what done looks like.",
+  "  steps: small parts (sub-bubbles). Each is a string or {text, done, dueDate, dueTime, duration (minutes, default 15), details}. Keep a step's id when editing; leave it out for new steps.",
+  "  inOrder: true if the steps must be done in order.",
+  "  after: ids of to-dos that must be finished before this one.",
+  "  repeat: null, or {freq: day|week|month|year, every: N, days: [0-6, Sunday = 0, for weekly], end: never|on|after, until: YYYY-MM-DD, count: N, lead: minutes before due to show it (null = right away), paused: true/false, n: which one in the series}.",
+  "  seriesId: links the to-dos of one repeating series.",
+  "  showAt: hidden until this time (milliseconds since 1970, 0 = showing now). showAtLocal is the same time in local time, for reading.",
+  "  createdAt, doneAt: milliseconds since 1970 (0 = not done). Leave them out for new to-dos.",
+  "  scheduledTime, date: an old way to plan a start time and day (HH:MM, YYYY-MM-DD). Usually empty.",
+  "  focusMin, history, spawnedNext: kept by the app for its own records. Leave them out for new to-dos.",
+  "Times are local to the computer that exported the file (see timeZone).",
+];
+
+function localStamp(ms) {
+  if (!ms) return "";
+  const d = new Date(ms);
+  return `${isoOf(d)} ${hm(d)}`;
+}
+
 function exportTodos() {
   if (state.tasks.length === 0) {
     toast("No todos to export", "error");
     return;
   }
+  const open = state.tasks.filter(t => !t.done).length;
   const payload = {
     type: "sharp-axe-todos",
-    version: 2,
+    version: 3,
+    readme: EXPORT_README,
     exportedAt: new Date().toISOString(),
+    exportedLocal: localStamp(Date.now()),
+    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "",
+    counts: { open, done: state.tasks.length - open },
     tasks: state.tasks.map(t => ({
       id: t.id,
       text: t.text,
-      tags: t.tags || [],
-      after: t.after || [],
-      quadrant: t.quadrant,
       done: !!t.done,
+      quadrant: t.quadrant,
+      quadrantName: qInfo(t.quadrant)?.label || "Not sorted",
+      importance: t.importance,
+      demand: t.demand || null,
+      dueDate: t.dueDate || "", dueTime: t.dueTime || "",
+      duration: t.duration || 30,
+      tags: t.tags || [],
+      details: t.details || "",
+      steps: (t.steps || []).map(st => ({ ...st })),
+      inOrder: !!t.inOrder,
+      after: t.after || [],
+      repeat: t.repeat, seriesId: t.seriesId ?? null,
+      showAt: t.showAt || 0, showAtLocal: localStamp(t.showAt),
       scheduledTime: t.scheduledTime || "",
       date: t.date || "",
-      duration: t.duration || 30,
-      importance: t.importance, inOrder: !!t.inOrder,
-      repeat: t.repeat, showAt: t.showAt || 0,
-      dueDate: t.dueDate || "", dueTime: t.dueTime || "",
-      details: t.details || "",
-      createdAt: t.createdAt, doneAt: t.doneAt, focusMin: t.focusMin || 0,
+      createdAt: t.createdAt, doneAt: t.doneAt || 0, focusMin: t.focusMin || 0,
+      spawnedNext: t.spawnedNext ?? null,
       history: t.history || [],
-      steps: (t.steps || []).map(({ id, ...rest }) => rest),
     })),
   };
   downloadBlob(
@@ -5278,60 +5445,227 @@ function exportTodos() {
 }
 
 /* ---- IMPORT TODOS ---- */
+// Takes old exports (version 2), new ones (version 3), and hand-made files:
+// a list of strings, or tasks with only some fields.
 function importTodos() {
   $("#fileInput").click();
+}
+
+// Ids made of digits become numbers, like the app's own ids.
+function importId(v) {
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  if (typeof v === "string" && v.trim()) return /^\d{1,15}$/.test(v.trim()) ? Number(v.trim()) : v.trim();
+  return null;
+}
+function importQuadrant(v) {
+  if (v == null) return null;
+  const x = String(v).trim().toLowerCase().replace(/[\s_-]+/g, " ");
+  if (QUADRANT_IDS.includes(x)) return x;
+  const byName = QUADRANTS.find(q => q.label.toLowerCase() === x);
+  if (byName) return byName.id;
+  const alias = {
+    "1": "q1", "q 1": "q1", "do first": "q1", "do": "q1", "urgent": "q1",
+    "2": "q2", "q 2": "q2", "schedule": "q2",
+    "quick": "quick", "under 3": "quick", "under 3 min": "quick", "under 3 minutes": "quick",
+    "4": "q4", "q 4": "q4", "eliminate": "q4", "drop": "q4",
+  };
+  return alias[x] || null; // q3 (the old Delegate box) comes in unsorted
+}
+function importTags(v) {
+  const list = Array.isArray(v) ? v : typeof v === "string" ? v.split(/[,\s]+/) : [];
+  return list.filter(x => typeof x === "string").map(x => x.trim().replace(/^#/, "")).filter(Boolean);
+}
+function importMinutes(v, fallback) {
+  const n = parseInt(v, 10);
+  return n > 0 ? n : fallback;
+}
+// "2026-11-24", "2026-11-24 17:00" or "2026-11-24T17:00".
+function splitDue(v) {
+  const m = String(v || "").trim().match(/^(\d{4}-\d{2}-\d{2})(?:[ T](\d{1,2}:\d{2}))?/);
+  if (!m) return null;
+  return { dueDate: m[1], dueTime: m[2] ? m[2].padStart(5, "0") : "" };
+}
+function importStep(s) {
+  if (typeof s === "string") s = { text: s };
+  if (!s || typeof s !== "object") return null;
+  const text = String(s.text ?? s.title ?? "").trim();
+  if (!text) return null;
+  const due = !s.dueDate && s.due ? splitDue(s.due) : null;
+  return { ...s, ...(due || {}), id: importId(s.id), text, done: s.done === true || s.done === "true",
+    duration: importMinutes(s.duration, 15) };
+}
+function importTask(raw) {
+  const t = typeof raw === "string" ? { text: raw } : raw;
+  if (!t || typeof t !== "object") return null;
+  const text = String(t.text ?? t.title ?? t.name ?? "").trim();
+  if (!text) return null;
+  const due = !t.dueDate && t.due ? splitDue(t.due) : null;
+  let showAt = Number(t.showAt) || 0;
+  if (!showAt && t.showAtLocal) showAt = new Date(String(t.showAtLocal).replace(" ", "T")).getTime() || 0;
+  const n = normalizeTask({
+    ...t, ...(due || {}),
+    id: importId(t.id), text, after: [],
+    quadrant: importQuadrant(t.quadrant ?? t.quadrantName),
+    done: t.done === true || t.done === "true",
+    tags: importTags(t.tags ?? t.bucket),
+    duration: importMinutes(t.duration, 30),
+    showAt,
+    steps: Array.isArray(t.steps) ? t.steps.map(importStep).filter(Boolean) : [],
+    seriesId: importId(t.seriesId), spawnedNext: importId(t.spawnedNext),
+  });
+  n.after = Array.isArray(t.after) ? t.after.map(importId).filter(x => x != null) : [];
+  n._hadId = importId(t.id) != null;
+  return n;
+}
+
+// Read a file's text into a list of clean to-dos.
+function parseTodosFile(text) {
+  const data = JSON.parse(text);
+  const list = Array.isArray(data) ? data
+    : Array.isArray(data?.tasks) ? data.tasks
+    : Array.isArray(data?.todos) ? data.todos
+    : null;
+  if (!list) throw new Error("Unrecognized file format");
+  const tasks = list.map(importTask).filter(Boolean);
+  if (!tasks.length) throw new Error("No tasks found in file");
+  // Two to-dos in the file with the same id: the second gets a new one.
+  const seen = new Set();
+  tasks.forEach(t => {
+    if (seen.has(String(t.id))) { t.id = uid(); t._hadId = false; }
+    seen.add(String(t.id));
+  });
+  return tasks;
+}
+
+const sameText = (a, b) => a.trim().toLowerCase() === b.trim().toLowerCase();
+
+// What "Add to my list" would do with each to-do in the file.
+function planAdd(incoming) {
+  const byId = new Map(state.tasks.map(t => [String(t.id), t]));
+  return incoming.map(t => {
+    if (t._hadId && byId.has(String(t.id))) return { t, action: "update", old: byId.get(String(t.id)) };
+    // No id (a hand-made task) and the same open to-do is already here: skip it.
+    if (!t._hadId && !t.done && state.tasks.some(x => !x.done && sameText(x.text, t.text))) return { t, action: "skip" };
+    return { t, action: "add" };
+  });
+}
+
+function finishImport(list, before) {
+  // Keep the old change time when a to-do comes back the same, so syncing between
+  // computers still knows which copy is newer. A real change gets a new time on save.
+  const old = new Map(before.map(t => [String(t.id), t]));
+  list.forEach(t => { delete t._hadId; if (!t.updatedAt && old.has(String(t.id))) t.updatedAt = old.get(String(t.id)).updatedAt || 0; });
+  const ids = new Set(state.tasks.map(t => String(t.id)));
+  state.tasks.forEach(t => { t.after = (t.after || []).filter(id => ids.has(String(id)) && String(id) !== String(t.id)); });
+}
+
+function applyImport(incoming, mode) {
+  const snap = snapshotTasks();
+  let msg;
+  if (mode === "replace") {
+    state.tasks = incoming;
+    state.triageOrder = [];
+    msg = `Replaced your list with ${plural(incoming.length, "todo")}`;
+  } else {
+    const plan = planAdd(incoming);
+    let added = 0, updated = 0, skipped = 0;
+    for (const p of plan) {
+      if (p.action === "update") { state.tasks[state.tasks.indexOf(p.old)] = p.t; updated++; }
+      else if (p.action === "add") { state.tasks.push(p.t); added++; }
+      else skipped++;
+    }
+    msg = [`Added ${plural(added, "todo")}`, updated ? `updated ${updated}` : "", skipped ? `skipped ${skipped} already in your list` : ""].filter(Boolean).join(", ");
+  }
+  finishImport(incoming, snap.tasks);
+  // Imported to-dos are new again, even if they were deleted here before.
+  const back = new Set(state.tasks.map(t => String(t.id)));
+  state.removed = (state.removed || []).filter(r => !(r.list === "tasks" && back.has(String(r.id))));
+  _openFor = null;
+  saveState(); render();
+  toast(msg, "success", { label: "Undo", fn: () => { restoreSnapshot(snap); toast("Import undone"); } });
 }
 
 async function handleFileImport(e) {
   const file = e.target.files?.[0];
   if (!file) return;
   try {
-    const text = await file.text();
-    const data = JSON.parse(text);
-    let incoming = [];
-    if (Array.isArray(data)) {
-      incoming = data;
-    } else if (data && Array.isArray(data.tasks)) {
-      incoming = data.tasks;
-    } else {
-      throw new Error("Unrecognized file format");
-    }
-    // "q3" (the old Delegate box) is no longer used: those tasks come in unsorted.
-    // New ids, so links ("must finish first") are moved over to the new ids.
-    const valid = incoming.filter(t => t && typeof t.text === "string" && t.text.trim());
-    const idMap = new Map();
-    const cleaned = valid.map(t => {
-      const n = normalizeTask({ ...t, id: null, after: [] });
-      if (t.id != null) idMap.set(t.id, n.id);
-      return n;
-    });
-    cleaned.forEach((n, i) => {
-      n.after = (Array.isArray(valid[i].after) ? valid[i].after : []).map(id => idMap.get(id)).filter(id => id != null && id !== n.id);
-    });
-    if (cleaned.length === 0) throw new Error("No tasks found in file");
-
-    let mode = "append";
-    if (state.tasks.length > 0) {
-      const yes = confirm(
-        `Import ${plural(cleaned.length, "todo")}?\n\n` +
-        `OK  = Append to your existing ${plural(state.tasks.length, "todo")}\n` +
-        `Cancel = Replace all existing todos`
-      );
-      mode = yes ? "append" : "replace";
-    }
-    if (mode === "replace") {
-      state.tasks = cleaned;
-      state.triageOrder = [];
-    } else {
-      state.tasks = state.tasks.concat(cleaned);
-    }
-    saveState(); render();
-    toast(`Imported ${plural(cleaned.length, "todo")}`);
+    const incoming = parseTodosFile(await file.text());
+    if (state.tasks.length === 0) applyImport(incoming, "replace");
+    else openImportChoice(incoming, file.name);
   } catch (err) {
     toast("Couldn't import: " + (err.message || "invalid file"), "error");
   } finally {
     e.target.value = "";
   }
+}
+
+// On-screen choice: replace the list or add to it.
+function closeDialog() {
+  $("#dialog")?.remove();
+}
+function openImportChoice(incoming, fileName) {
+  closeDialog();
+  const done = incoming.filter(t => t.done).length;
+  const plan = planAdd(incoming);
+  const upd = plan.filter(p => p.action === "update").length;
+  const skip = plan.filter(p => p.action === "skip").length;
+  const add = plan.length - upd - skip;
+  const addSub = [`Adds ${plural(add, "new to-do")}`, upd ? `updates ${upd} you already have` : "", skip ? `skips ${skip} already in your list` : ""]
+    .filter(Boolean).join(", ") + ". Nothing is removed.";
+  const choice = (title, sub, cls, onclick) => el("button", { type: "button", class: `dialog-choice ${cls}`, onclick }, [
+    el("strong", { text: title }),
+    el("span", { text: sub }),
+  ]);
+  const box = el("div", { class: "dialog", role: "dialog", "aria-modal": "true", "aria-labelledby": "dialogTitle" }, [
+    el("h2", { id: "dialogTitle", class: "dialog-title", text: `Import ${plural(incoming.length, "to-do")}` }),
+    el("p", { class: "dialog-sub", text: `From ${fileName}: ${incoming.length - done} open${done ? `, ${done} done` : ""}. You have ${plural(state.tasks.length, "to-do")} now.` }),
+    choice("Add to my list", addSub, "", () => { closeDialog(); applyImport(incoming, "add"); }),
+    choice("Replace my list", `Your ${plural(state.tasks.length, "to-do")} go away and the file's list takes their place. Your garden and saved to-dos stay.`, "danger",
+      () => { closeDialog(); applyImport(incoming, "replace"); }),
+    el("div", { class: "controls", style: { justifyContent: "flex-end" } }, [
+      el("button", { type: "button", class: "btn btn-sm btn-ghost", text: "Cancel", onclick: closeDialog }),
+    ]),
+  ]);
+  const overlay = el("div", { id: "dialog", class: "dialog-overlay", onclick: (e) => { if (e.target === overlay) closeDialog(); } }, [box]);
+  document.body.appendChild(overlay);
+  box.querySelector("button")?.focus();
+}
+
+/* ---- DELETE AND CLEAR (not the same as done: nothing goes to the garden) ---- */
+function snapshotTasks() {
+  return { tasks: JSON.parse(JSON.stringify(state.tasks)), triageOrder: [...(state.triageOrder || [])] };
+}
+function restoreSnapshot(snap) {
+  const back = new Set(snap.tasks.map(t => String(t.id)));
+  state.tasks = snap.tasks;
+  state.triageOrder = snap.triageOrder;
+  state.removed = (state.removed || []).filter(r => !(r.list === "tasks" && back.has(String(r.id))));
+  saveState(); render();
+}
+function removeTasks(list, msg) {
+  if (!list.length) return;
+  const snap = snapshotTasks();
+  list.forEach(deleteTask);
+  const gone = new Set(list.map(t => String(t.id)));
+  state.triageOrder = (state.triageOrder || []).filter(id => !gone.has(String(id)));
+  if (_openFor != null && gone.has(String(_openFor))) _openFor = null;
+  saveState(); render();
+  toast(msg, "success", { label: "Undo", fn: () => { restoreSnapshot(snap); toast("Brought back"); } });
+}
+function deleteOne(t) {
+  removeTasks([t], `Deleted “${t.text}”`);
+}
+function clearDone() {
+  const done = state.tasks.filter(t => t.done);
+  if (!done.length) { toast("No done to-dos to clear"); return; }
+  if (!confirm(`Clear ${plural(done.length, "done to-do")} from your list? Your garden keeps their slices.`)) return;
+  removeTasks(done, `Cleared ${plural(done.length, "done to-do")}`);
+}
+function clearAll() {
+  const all = [...state.tasks];
+  if (!all.length) { toast("Your list is already empty"); return; }
+  if (!confirm(`Delete all ${plural(all.length, "to-do")}, open and done? Your garden and saved to-dos stay. You can undo right after.`)) return;
+  removeTasks(all, `Cleared all ${plural(all.length, "to-do")}`);
 }
 
 /* ---- SAVE FULL SESSION (readable .txt with everything) ---- */
@@ -5369,6 +5703,7 @@ function downloadFullSession() {
         ...(t.tags || []).map(x => `#${x}`),
         ...waitingOn(t).map(p => `(after: ${p.text})`),
         t.dueDate ? `(due ${t.dueDate}${t.dueTime ? " " + t.dueTime : ""})` : "",
+        t.demand ? `(${t.demand} demand)` : "",
       ].filter(Boolean).join(" ");
       lines.push(`${i + 1}. ${mark(t)}${t.text}${extra ? `  ${extra}` : ""}`);
       if (t.details) lines.push(`      ${t.details.replace(/\n/g, "\n      ")}`);
@@ -5712,6 +6047,7 @@ document.addEventListener("click", (e) => {
 });
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
+    closeDialog();
     closeMenu();
     closeJarMenu();
     if (_pickId) { _pickId = null; render(); }
@@ -5721,6 +6057,7 @@ document.addEventListener("keydown", (e) => {
 
 $("#miImport").addEventListener("click", () => { closeMenu(); importTodos(); });
 $("#miExport").addEventListener("click", () => { closeMenu(); exportTodos(); });
+$("#miClearAll").addEventListener("click", () => { closeMenu(); clearAll(); });
 $("#miSaveAll").addEventListener("click", () => { closeMenu(); downloadFullSession(); });
 $("#fileInput").addEventListener("change", handleFileImport);
 $("#miDrive").addEventListener("click", () => { closeMenu(); driveConnect(); });
